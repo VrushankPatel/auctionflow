@@ -1,0 +1,42 @@
+plugins {
+    id 'org.springframework.boot'
+    id 'scala'
+    id 'io.gatling.gradle' version '3.9.5'
+}
+
+dependencies {
+    implementation project(':auction-api')
+    implementation project(':auction-core')
+    implementation project(':auction-common')
+    implementation project(':auction-events')
+    implementation project(':auction-timers')
+    implementation project(':auction-payments')
+    implementation project(':auction-notifications')
+    implementation project(':auction-analytics')
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:kafka'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:redis'
+    testImplementation 'org.testcontainers:toxiproxy'
+    testImplementation 'org.awaitility:awaitility'
+
+    // Pact dependencies for contract testing
+    testImplementation 'au.com.dius.pact.consumer:junit5:4.6.11'
+    testImplementation 'au.com.dius.pact.provider:junit5:4.6.11'
+    testImplementation 'au.com.dius.pact.provider:spring:4.6.11'
+
+    // Selenium for end-to-end tests
+    testImplementation 'org.seleniumhq.selenium:selenium-java:4.15.0'
+    testImplementation 'org.seleniumhq.selenium:selenium-chrome-driver:4.15.0'
+    testImplementation 'io.github.bonigarcia:webdrivermanager:5.5.3'
+
+    gatlingImplementation 'io.gatling.highcharts:gatling-charts-highcharts:3.9.5'
+}
+
+gatling {
+    simulations = {
+        include "**/simulations/*.scala"
+    }
+}
