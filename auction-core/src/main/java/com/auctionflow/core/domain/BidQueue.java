@@ -4,20 +4,19 @@ import com.auctionflow.core.domain.valueobjects.Bid;
 import com.auctionflow.core.domain.valueobjects.Money;
 
 import java.util.Comparator;
-import java.util.PriorityQueue;
-import java.util.Queue;
+import java.util.concurrent.PriorityBlockingQueue;
 
 /**
  * Efficient bid queue for high-frequency auctions.
- * Uses priority queue ordered by price-time priority: higher amount first, then lower seqNo for ties.
+ * Uses concurrent priority queue ordered by price-time priority: higher amount first, then lower seqNo for ties.
  * Provides O(log n) insertion and O(1) peek for processing.
  * Thread-safe for concurrent access in high-frequency scenarios.
  */
 public class BidQueue {
-    private final Queue<Bid> queue;
+    private final PriorityBlockingQueue<Bid> queue;
 
     public BidQueue() {
-        this.queue = new PriorityQueue<>(Comparator
+        this.queue = new PriorityBlockingQueue<>(11, Comparator
                 .comparing(Bid::amount, Comparator.reverseOrder()) // higher amount first
                 .thenComparing(Bid::seqNo)); // lower seqNo first for same amount
     }
@@ -26,7 +25,7 @@ public class BidQueue {
      * Adds a bid to the queue.
      * @param bid the bid to add
      */
-    public synchronized void addBid(Bid bid) {
+    public void addBid(Bid bid) {
         queue.offer(bid);
     }
 
@@ -34,7 +33,7 @@ public class BidQueue {
      * Peeks at the highest priority bid without removing.
      * @return the highest priority bid or null if empty
      */
-    public synchronized Bid peekHighestBid() {
+    public Bid peekHighestBid() {
         return queue.peek();
     }
 
@@ -42,7 +41,7 @@ public class BidQueue {
      * Removes and returns the highest priority bid.
      * @return the highest priority bid or null if empty
      */
-    public synchronized Bid pollHighestBid() {
+    public Bid pollHighestBid() {
         return queue.poll();
     }
 
@@ -50,7 +49,7 @@ public class BidQueue {
      * Checks if the queue is empty.
      * @return true if empty
      */
-    public synchronized boolean isEmpty() {
+    public boolean isEmpty() {
         return queue.isEmpty();
     }
 
@@ -58,14 +57,14 @@ public class BidQueue {
      * Returns the size of the queue.
      * @return number of bids in queue
      */
-    public synchronized int size() {
+    public int size() {
         return queue.size();
     }
 
     /**
      * Clears all bids from the queue.
      */
-    public synchronized void clear() {
+    public void clear() {
         queue.clear();
     }
 }

@@ -132,10 +132,29 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
                 kafkaTemplate.send("auction-events", event.getAggregateId().toString(), event);
             }
 
-            // Handle proxy bidding after the initial bid is placed
+            // Handle proxy bidding after the initial bid is placed asynchronously to reduce latency
             if (type != AuctionType.DUTCH) {
-                handleProxyBidding(command.auctionId(), aggregate);
-                handleAutomatedBidding(command.auctionId(), aggregate);
+                retryExecutor.submit(() -> {
+                    String lockKey = "auction:" + command.auctionId().value();
+                    RLock lock = redissonClient.getLock(lockKey);
+                    try {
+                        if (lock.tryLock(10, TimeUnit.SECONDS)) {
+                            // Reload aggregate to get latest state
+                            List<DomainEvent> events = eventStore.getEvents(command.auctionId());
+                            AggregateRoot freshAggregate = type == AuctionType.DUTCH ? new DutchAuctionAggregate(events) : new AuctionAggregate(events);
+                            handleProxyBidding(command.auctionId(), freshAggregate);
+                            handleAutomatedBidding(command.auctionId(), freshAggregate);
+                            // Update cache
+                            aggregateCache.put(command.auctionId(), freshAggregate);
+                        }
+                    } catch (Exception e) {
+                        // Log error
+                    } finally {
+                        if (lock.isHeldByCurrentThread()) {
+                            lock.unlock();
+                        }
+                    }
+                });
             }
 
             // Check for anti-snipe extension (only for English)

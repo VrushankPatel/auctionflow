@@ -26,14 +26,15 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 - **Efficient Highest Bid Tracking**: Maintains current highest bid in aggregate state for O(1) lookups, avoiding O(n) scans of bid history.
 - **Fair Ordering**: Uses sequence numbers for price-time priority, with tie-breaking by sequence number for simultaneous bids.
 - **Bid Validation with Increments**: Integrated BidValidator enforces minimum bid increments and reserve prices for fair bidding.
-- **Bid Queue Management**: Thread-safe priority queue for efficient bid ordering and processing, ensuring price-time priority with O(log n) insertion and O(1) peek operations.
+- **Bid Queue Management**: Concurrent priority queue (PriorityBlockingQueue) for efficient bid ordering and processing, ensuring price-time priority with O(log n) insertion and O(1) peek operations, reducing contention in high-frequency scenarios.
 - **Optimized Price-Time Priority Logic**: Refactored bid comparison logic with dedicated method for clarity and performance in determining highest priority bids.
 - **Thread Safety**: Distributed locks per auction prevent race conditions; optimistic concurrency with retries ensures consistency.
-- **Zero-Allocation Hot Paths**: Minimizes object creation in bid validation using thread-local ValidationResult pools; reuses command data to reduce GC pressure.
+- **Zero-Allocation Hot Paths**: Minimizes object creation in bid validation using thread-local ValidationResult pools and ObjectPool for BidValidator instances; reuses command data to reduce GC pressure.
 - **Global Sequence Number Generation**: Uses Redis atomic increments for per-auction monotonic sequence numbers, ensuring fairness in distributed environments.
 - **Proper Bid Increment Strategy**: Proxy bidding uses configurable bid increment strategies instead of hardcoded values for accurate minimum bid calculations.
 - **Precise Anti-Snipe Timing**: Anti-snipe extensions use bid command's server timestamp for accurate timing, preventing approximation errors.
-- **Asynchronous Processing**: Bid placement is asynchronous with immediate response; proxy and automated bidding decoupled to maintain low latency.
+- **Asynchronous Processing**: Bid placement is asynchronous with immediate response; proxy and automated bidding decoupled to maintain low latency via async execution.
+- **Batched Bid Processing**: Processes queued bids in batches of 10 to prevent blocking on large queues and maintain responsiveness.
 - **High Throughput**: Supports 10,000+ bids/sec through optimized aggregate reconstruction and event-driven architecture.
 - **Error Handling**: Proper exception handling in bid placement for accurate acceptance status.
 

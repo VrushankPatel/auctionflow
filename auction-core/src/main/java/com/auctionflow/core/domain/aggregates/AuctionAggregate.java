@@ -6,6 +6,7 @@ import com.auctionflow.core.domain.events.*;
 import com.auctionflow.core.domain.utils.ObjectPool;
 import com.auctionflow.core.domain.validators.BidValidator;
 import com.auctionflow.core.domain.validators.ValidationResult;
+import java.util.function.Supplier;
 import com.auctionflow.core.domain.valueobjects.*;
 import com.auctionflow.core.domain.valueobjects.FixedBidIncrement;
 import java.math.BigDecimal;
@@ -18,6 +19,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class AuctionAggregate extends AggregateRoot {
+    // Pool BidValidator instances to reduce allocation in hot paths
+    private static final ObjectPool<BidValidator> BID_VALIDATOR_POOL = new ObjectPool<>(10, 100, BidValidator::new);
+
     private AuctionId id;
     private ItemId itemId;
     private AuctionType auctionType;
@@ -200,11 +204,15 @@ public class AuctionAggregate extends AggregateRoot {
         if (serverTs.isBefore(startTime) || serverTs.isAfter(endTime)) {
             throw new IllegalStateException("Auction is not active");
         }
-        // Use BidValidator for proper validation with increments
-        BidValidator validator = new BidValidator();
-        ValidationResult result = validator.validate(currentHighestBid, reservePrice, bidIncrement, new BidderId(command.bidderId()), command.amount());
-        if (!result.isValid()) {
-            throw new IllegalStateException(result.getErrors().get(0));
+        // Use pooled BidValidator for proper validation with increments to minimize allocation
+        BidValidator validator = BID_VALIDATOR_POOL.borrow();
+        try {
+            ValidationResult result = validator.validate(currentHighestBid, reservePrice, bidIncrement, new BidderId(command.bidderId()), command.amount());
+            if (!result.isValid()) {
+                throw new IllegalStateException(result.getErrors().get(0));
+            }
+        } finally {
+            BID_VALIDATOR_POOL.release(validator);
         }
         // Use bid queue for efficient processing and ordering
         Bid bid = new Bid(new BidderId(command.bidderId()), command.amount(), serverTs, seqNo);
@@ -213,25 +221,31 @@ public class AuctionAggregate extends AggregateRoot {
     }
 
     /**
-     * Processes queued bids in price-time priority order.
+     * Processes queued bids in price-time priority order, up to a batch size to prevent blocking.
      * Emits BidPlacedEvent for each bid and checks for reserve met.
+     * If more bids remain, they will be processed in subsequent calls.
      */
     private void processQueuedBids() {
-        while (!bidQueue.isEmpty()) {
+        int batchSize = 10; // Process up to 10 bids per batch to minimize latency
+        int processed = 0;
+        while (!bidQueue.isEmpty() && processed < batchSize) {
             Bid bid = bidQueue.pollHighestBid();
-            UUID eventId = UUID.randomUUID();
-            long sequenceNumber = getVersion() + 1;
-            BidPlacedEvent event = new BidPlacedEvent(id, bid.bidderId().id(), bid.amount(), bid.timestamp(), eventId, sequenceNumber, bid.seqNo());
-            apply(event);
-            addDomainEvent(event);
+            if (bid != null) {
+                UUID eventId = UUID.randomUUID();
+                long sequenceNumber = getVersion() + 1;
+                BidPlacedEvent event = new BidPlacedEvent(id, bid.bidderId().id(), bid.amount(), bid.timestamp(), eventId, sequenceNumber, bid.seqNo());
+                apply(event);
+                addDomainEvent(event);
 
-            // Check if reserve is met for the first time
-            if (!reserveMet && bid.amount().isGreaterThanOrEqual(reservePrice)) {
-                reserveMet = true;
-                UUID reserveEventId = UUID.randomUUID();
-                long reserveSequenceNumber = getVersion() + 1;
-                ReserveMetEvent reserveEvent = new ReserveMetEvent(id, bid.bidderId().id(), bid.amount(), reserveEventId, bid.timestamp(), reserveSequenceNumber);
-                addDomainEvent(reserveEvent);
+                // Check if reserve is met for the first time
+                if (!reserveMet && bid.amount().isGreaterThanOrEqual(reservePrice)) {
+                    reserveMet = true;
+                    UUID reserveEventId = UUID.randomUUID();
+                    long reserveSequenceNumber = getVersion() + 1;
+                    ReserveMetEvent reserveEvent = new ReserveMetEvent(id, bid.bidderId().id(), bid.amount(), reserveEventId, bid.timestamp(), reserveSequenceNumber);
+                    addDomainEvent(reserveEvent);
+                }
+                processed++;
             }
         }
     }
