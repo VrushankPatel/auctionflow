@@ -2,6 +2,7 @@ package com.auctionflow.payments;
 
 import com.auctionflow.core.domain.events.AuctionClosedEvent;
 import com.auctionflow.core.domain.events.DomainEvent;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -19,6 +20,7 @@ public class AuctionEventListener {
     }
 
     @KafkaListener(topics = "auction-events", groupId = "payment-service")
+    @WithSpan("handle-auction-closed-event")
     public void handleAuctionEvent(DomainEvent event) {
         if (event instanceof AuctionClosedEvent) {
             AuctionClosedEvent closedEvent = (AuctionClosedEvent) event;

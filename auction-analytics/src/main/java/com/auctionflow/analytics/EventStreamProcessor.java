@@ -1,6 +1,7 @@
 package com.auctionflow.analytics;
 
 import com.auctionflow.core.domain.events.*;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -54,18 +55,22 @@ public class EventStreamProcessor {
     }
 
     @KafkaListener(topics = "bid-events", groupId = "analytics-group")
+    @WithSpan("process-bid-event-stream")
     public void processBidEvent(DomainEvent event) {
         if (event instanceof BidPlacedEvent) {
             BidPlacedEvent bidEvent = (BidPlacedEvent) event;
             totalBids.increment();
+            acceptedBids.increment();
             auctionBidCounts.computeIfAbsent(bidEvent.getAuctionId(), k -> new AtomicInteger(0)).incrementAndGet();
             logger.info("Processed BidPlacedEvent for auction {}", bidEvent.getAuctionId());
         } else if (event instanceof BidRejectedEvent) {
-            // Rejected bids are still bids, but perhaps not count in accepted
+            totalBids.increment();
+            logger.info("Processed BidRejectedEvent for auction {}", ((BidRejectedEvent) event).getAuctionId());
         }
     }
 
     @KafkaListener(topics = "auction-events", groupId = "analytics-group")
+    @WithSpan("process-auction-event-stream")
     public void processAuctionEvent(DomainEvent event) {
         if (event instanceof AuctionCreatedEvent) {
             activeAuctions.incrementAndGet();
@@ -79,9 +84,9 @@ public class EventStreamProcessor {
     }
 
     @KafkaListener(topics = "notification-events", groupId = "analytics-group")
+    @WithSpan("process-notification-event-stream")
     public void processNotificationEvent(DomainEvent event) {
         if (event instanceof WinnerDeclaredEvent) {
-            acceptedBids.increment(); // Assuming the winning bid is accepted
             logger.info("Winner declared for auction {}", ((WinnerDeclaredEvent) event).getAuctionId());
         }
     }

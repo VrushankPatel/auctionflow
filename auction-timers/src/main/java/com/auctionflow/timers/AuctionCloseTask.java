@@ -7,6 +7,8 @@ import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.AuctionStatus;
 import com.auctionflow.events.EventStore;
 import com.auctionflow.events.publisher.KafkaEventPublisher;
+import io.micrometer.core.instrument.Timer;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -31,18 +33,22 @@ public class AuctionCloseTask implements TimerTask {
     private final RedissonClient redissonClient;
     private final UUID jobId;
     private final DurableScheduler durableScheduler;
+    private final TimerMetrics timerMetrics;
 
-    public AuctionCloseTask(AuctionId auctionId, EventStore eventStore, KafkaEventPublisher eventPublisher, RedissonClient redissonClient, UUID jobId, DurableScheduler durableScheduler) {
+    public AuctionCloseTask(AuctionId auctionId, EventStore eventStore, KafkaEventPublisher eventPublisher, RedissonClient redissonClient, UUID jobId, DurableScheduler durableScheduler, TimerMetrics timerMetrics) {
         this.auctionId = auctionId;
         this.eventStore = eventStore;
         this.eventPublisher = eventPublisher;
         this.redissonClient = redissonClient;
         this.jobId = jobId;
         this.durableScheduler = durableScheduler;
+        this.timerMetrics = timerMetrics;
     }
 
     @Override
+    @WithSpan("execute-auction-close-task")
     public void execute() {
+        Timer.Sample sample = timerMetrics.startAuctionCloseTimer();
         String lockKey = "auction-close:" + auctionId.value();
         RLock lock = redissonClient.getLock(lockKey);
         try {
@@ -72,6 +78,9 @@ public class AuctionCloseTask implements TimerTask {
                 logger.info("Auction {} end time not reached yet, endTime: {}, now: {}", auctionId, aggregate.getEndTime(), now);
                 return;
             }
+            // Record timer accuracy: delay in milliseconds
+            long delayMs = now.toEpochMilli() - aggregate.getEndTime().toEpochMilli();
+            timerMetrics.recordTimerAccuracy(delayMs);
 
             // Determine winner and close auction
             CloseAuctionCommand command = new CloseAuctionCommand(auctionId);
@@ -99,6 +108,7 @@ public class AuctionCloseTask implements TimerTask {
             durableScheduler.handleJobFailure(jobId);
             // In a real system, might want to retry or send to DLQ
         } finally {
+            timerMetrics.recordAuctionCloseLatency(sample);
             if (lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }

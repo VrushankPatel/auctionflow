@@ -54,6 +54,7 @@ public class AuctionTimerService {
     private final KafkaEventPublisher eventPublisher;
     private final RedissonClient redissonClient;
     private final DurableScheduler durableScheduler;
+    private final TimerMetrics timerMetrics;
     private final ExecutorService schedulingExecutor = new ThreadPoolExecutor(
         5, 20, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(100)
     );
@@ -61,12 +62,13 @@ public class AuctionTimerService {
 
     public AuctionTimerService(HierarchicalTimingWheel timingWheel, EventStore eventStore,
                                KafkaEventPublisher eventPublisher, RedissonClient redissonClient,
-                               DurableScheduler durableScheduler) {
+                               DurableScheduler durableScheduler, TimerMetrics timerMetrics) {
         this.timingWheel = timingWheel;
         this.eventStore = eventStore;
         this.eventPublisher = eventPublisher;
         this.redissonClient = redissonClient;
         this.durableScheduler = durableScheduler;
+        this.timerMetrics = timerMetrics;
     }
 
     /**
@@ -80,7 +82,7 @@ public class AuctionTimerService {
             try {
                 UUID jobId = durableScheduler.scheduleAuctionClose(auctionId, endTime);
                 long delay = Math.max(0, endTime.toEpochMilli() - Instant.now().toEpochMilli());
-                AuctionCloseTask task = new AuctionCloseTask(auctionId, eventStore, eventPublisher, redissonClient, jobId, durableScheduler);
+                AuctionCloseTask task = new AuctionCloseTask(auctionId, eventStore, eventPublisher, redissonClient, jobId, durableScheduler, timerMetrics);
                 Timeout timeout = timingWheel.schedule(task, delay);
                 activeTimers.put(auctionId, timeout);
                 logger.info("Scheduled close timer for auction {} at {}", auctionId, endTime);
@@ -101,7 +103,7 @@ public class AuctionTimerService {
             AuctionSchedule schedule = schedules.get(i);
             UUID jobId = jobIds.get(i);
             long delay = Math.max(0, schedule.getEndTime().toEpochMilli() - Instant.now().toEpochMilli());
-            AuctionCloseTask task = new AuctionCloseTask(schedule.getAuctionId(), eventStore, eventPublisher, redissonClient, jobId, durableScheduler);
+            AuctionCloseTask task = new AuctionCloseTask(schedule.getAuctionId(), eventStore, eventPublisher, redissonClient, jobId, durableScheduler, timerMetrics);
             Timeout timeout = timingWheel.schedule(task, delay);
             activeTimers.put(schedule.getAuctionId(), timeout);
             logger.info("Scheduled close timer for auction {} at {}", schedule.getAuctionId(), schedule.getEndTime());

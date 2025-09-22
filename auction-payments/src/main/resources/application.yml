@@ -1,20 +1,15 @@
 spring:
   kafka:
-    consumer:
-      bootstrap-servers: localhost:9092
-      group-id: analytics-group
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      properties:
-        spring.json.trusted.packages: "com.auctionflow.core.domain.events"
-  redis:
-    host: localhost
-    port: 6379
-
-ml:
-  service:
-    url: http://localhost:5000  # Python ML service URL
+    bootstrap-servers: localhost:9092
+  datasource:
+    url: jdbc:postgresql://localhost:5432/auctionflow
+    username: auctionflow
+    password: password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
 
 management:
   endpoints:
@@ -38,7 +33,7 @@ management:
 
 otel:
   service:
-    name: auction-analytics
+    name: auction-payments
   traces:
     exporter: jaeger
     sampler: parentbased_always_on

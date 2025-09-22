@@ -7,6 +7,7 @@ import com.auctionflow.notifications.repository.BatchedNotificationRepository;
 import com.auctionflow.notifications.repository.NotificationDeliveryRepository;
 import com.auctionflow.notifications.service.EmailService;
 import com.auctionflow.notifications.service.PushNotificationService;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -43,6 +44,7 @@ public class NotificationService {
     }
 
     @KafkaListener(topics = "auction-events", groupId = "notification-service")
+    @WithSpan("handle-auction-event")
     public void handleAuctionEvent(DomainEvent event) {
         if (event instanceof AuctionExtendedEvent) {
             handleAuctionExtended((AuctionExtendedEvent) event);
@@ -53,6 +55,7 @@ public class NotificationService {
     }
 
     @KafkaListener(topics = "bid-events", groupId = "notification-service")
+    @WithSpan("handle-bid-event")
     public void handleBidEvent(DomainEvent event) {
         if (event instanceof BidPlacedEvent) {
             handleBidPlaced((BidPlacedEvent) event);
@@ -62,6 +65,7 @@ public class NotificationService {
     }
 
     @KafkaListener(topics = "notification-events", groupId = "notification-service")
+    @WithSpan("handle-notification-event")
     public void handleNotificationEvent(DomainEvent event) {
         if (event instanceof WinnerDeclaredEvent) {
             handleWinnerDeclared((WinnerDeclaredEvent) event);

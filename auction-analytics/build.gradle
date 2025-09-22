@@ -9,7 +9,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-batch'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'io.micrometer:micrometer-registry-prometheus'
-    implementation project(':auction-core')
+     implementation 'io.micrometer:micrometer-registry-prometheus'
+     implementation platform('io.opentelemetry:opentelemetry-bom:1.32.0')
+     implementation 'io.opentelemetry:opentelemetry-api'
+     implementation 'io.opentelemetry:opentelemetry-sdk'
+     implementation 'io.opentelemetry:opentelemetry-exporter-jaeger'
+     implementation 'io.opentelemetry:opentelemetry-extension-annotations'
+     implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'
+     implementation 'net.logstash.logback:logstash-logback-encoder:7.3'
+     implementation project(':auction-core')
     implementation project(':auction-common')
 }

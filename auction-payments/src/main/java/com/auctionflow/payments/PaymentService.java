@@ -13,17 +13,22 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final StateMachineFactory<Payment.PaymentStatus, PaymentEvent> stateMachineFactory;
+    private final PaymentMetrics paymentMetrics;
 
     public PaymentService(PaymentRepository paymentRepository,
-                          StateMachineFactory<Payment.PaymentStatus, PaymentEvent> stateMachineFactory) {
+                          StateMachineFactory<Payment.PaymentStatus, PaymentEvent> stateMachineFactory,
+                          PaymentMetrics paymentMetrics) {
         this.paymentRepository = paymentRepository;
         this.stateMachineFactory = stateMachineFactory;
+        this.paymentMetrics = paymentMetrics;
     }
 
     @Transactional
     public Payment createPayment(String auctionId, String payerId, BigDecimal amount) {
         Payment payment = new Payment(auctionId, payerId, amount);
-        return paymentRepository.save(payment);
+        Payment saved = paymentRepository.save(payment);
+        paymentMetrics.incrementInitiated();
+        return saved;
     }
 
     @Transactional
@@ -31,8 +36,12 @@ public class PaymentService {
         Payment payment = paymentRepository.findById(paymentId).orElseThrow();
         StateMachine<Payment.PaymentStatus, PaymentEvent> sm = build(payment);
         sm.sendEvent(PaymentEvent.AUTHORIZE);
-        payment.setStatus(sm.getState().getId());
+        Payment.PaymentStatus newStatus = sm.getState().getId();
+        payment.setStatus(newStatus);
         paymentRepository.save(payment);
+        if (newStatus == Payment.PaymentStatus.AUTHORIZED) {
+            paymentMetrics.incrementAuthorized();
+        }
     }
 
     @Transactional
@@ -40,8 +49,12 @@ public class PaymentService {
         Payment payment = paymentRepository.findById(paymentId).orElseThrow();
         StateMachine<Payment.PaymentStatus, PaymentEvent> sm = build(payment);
         sm.sendEvent(PaymentEvent.CAPTURE);
-        payment.setStatus(sm.getState().getId());
+        Payment.PaymentStatus newStatus = sm.getState().getId();
+        payment.setStatus(newStatus);
         paymentRepository.save(payment);
+        if (newStatus == Payment.PaymentStatus.CAPTURED) {
+            paymentMetrics.incrementCaptured();
+        }
     }
 
     @Transactional
@@ -49,8 +62,12 @@ public class PaymentService {
         Payment payment = paymentRepository.findById(paymentId).orElseThrow();
         StateMachine<Payment.PaymentStatus, PaymentEvent> sm = build(payment);
         sm.sendEvent(PaymentEvent.RELEASE);
-        payment.setStatus(sm.getState().getId());
+        Payment.PaymentStatus newStatus = sm.getState().getId();
+        payment.setStatus(newStatus);
         paymentRepository.save(payment);
+        if (newStatus == Payment.PaymentStatus.RELEASED) {
+            paymentMetrics.incrementReleased();
+        }
     }
 
     @Transactional
@@ -58,8 +75,13 @@ public class PaymentService {
         Payment payment = paymentRepository.findById(paymentId).orElseThrow();
         StateMachine<Payment.PaymentStatus, PaymentEvent> sm = build(payment);
         sm.sendEvent(PaymentEvent.SETTLE);
-        payment.setStatus(sm.getState().getId());
+        Payment.PaymentStatus newStatus = sm.getState().getId();
+        payment.setStatus(newStatus);
         paymentRepository.save(payment);
+        if (newStatus == Payment.PaymentStatus.SETTLED) {
+            paymentMetrics.incrementSettled();
+            paymentMetrics.incrementRevenue(payment.getAmount().doubleValue());
+        }
     }
 
     @Transactional
@@ -67,8 +89,12 @@ public class PaymentService {
         Payment payment = paymentRepository.findById(paymentId).orElseThrow();
         StateMachine<Payment.PaymentStatus, PaymentEvent> sm = build(payment);
         sm.sendEvent(PaymentEvent.REFUND);
-        payment.setStatus(sm.getState().getId());
+        Payment.PaymentStatus newStatus = sm.getState().getId();
+        payment.setStatus(newStatus);
         paymentRepository.save(payment);
+        if (newStatus == Payment.PaymentStatus.REFUNDED) {
+            paymentMetrics.incrementRefunded();
+        }
     }
 
     private StateMachine<Payment.PaymentStatus, PaymentEvent> build(Payment payment) {

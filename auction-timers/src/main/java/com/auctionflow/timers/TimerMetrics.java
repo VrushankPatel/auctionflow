@@ -1,45 +1,62 @@
 package com.auctionflow.timers;
 
-import org.springframework.jmx.export.annotation.ManagedAttribute;
-import org.springframework.jmx.export.annotation.ManagedResource;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Histogram;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Component;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Metrics for tracking timer tasks.
  */
 @Component
-@ManagedResource
 public class TimerMetrics {
 
-    private final AtomicLong scheduled = new AtomicLong(0);
-    private final AtomicLong executed = new AtomicLong(0);
-    private final AtomicLong cancelled = new AtomicLong(0);
+    private final Counter scheduled;
+    private final Counter executed;
+    private final Counter cancelled;
+    private final Timer auctionCloseLatency;
+    private final Histogram timerAccuracy;
+
+    public TimerMetrics(MeterRegistry meterRegistry) {
+        this.scheduled = Counter.builder("timer_tasks_scheduled_total")
+                .description("Total number of timer tasks scheduled")
+                .register(meterRegistry);
+        this.executed = Counter.builder("timer_tasks_executed_total")
+                .description("Total number of timer tasks executed")
+                .register(meterRegistry);
+        this.cancelled = Counter.builder("timer_tasks_cancelled_total")
+                .description("Total number of timer tasks cancelled")
+                .register(meterRegistry);
+        this.auctionCloseLatency = Timer.builder("auction_close_duration")
+                .description("Time taken to close an auction")
+                .register(meterRegistry);
+        this.timerAccuracy = Histogram.builder("timer_accuracy_delay")
+                .description("Delay in timer firing (milliseconds)")
+                .register(meterRegistry);
+    }
 
     public void incrementScheduled() {
-        scheduled.incrementAndGet();
+        scheduled.increment();
     }
 
     public void incrementExecuted() {
-        executed.incrementAndGet();
+        executed.increment();
     }
 
     public void incrementCancelled() {
-        cancelled.incrementAndGet();
+        cancelled.increment();
     }
 
-    @ManagedAttribute
-    public long getScheduled() {
-        return scheduled.get();
+    public Timer.Sample startAuctionCloseTimer() {
+        return Timer.start();
     }
 
-    @ManagedAttribute
-    public long getExecuted() {
-        return executed.get();
+    public void recordAuctionCloseLatency(Timer.Sample sample) {
+        sample.stop(auctionCloseLatency);
     }
 
-    @ManagedAttribute
-    public long getCancelled() {
-        return cancelled.get();
+    public void recordTimerAccuracy(long delayMs) {
+        timerAccuracy.record(delayMs);
     }
 }

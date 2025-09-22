@@ -1,6 +1,7 @@
 package com.auctionflow.analytics;
 
 import com.auctionflow.core.domain.events.*;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -31,6 +32,7 @@ public class RealtimeAnalyticsService {
     }
 
     @KafkaListener(topics = "auction-events", groupId = "analytics-realtime-group")
+    @WithSpan("process-auction-event-analytics")
     public void processAuctionEvent(DomainEvent event) {
         if (event instanceof AuctionCreatedEvent) {
             AuctionCreatedEvent auctionEvent = (AuctionCreatedEvent) event;
@@ -43,6 +45,7 @@ public class RealtimeAnalyticsService {
     }
 
     @KafkaListener(topics = "bid-events", groupId = "analytics-realtime-group")
+    @WithSpan("process-bid-event-analytics")
     public void processBidEvent(DomainEvent event) {
         if (event instanceof BidPlacedEvent) {
             BidPlacedEvent bidEvent = (BidPlacedEvent) event;

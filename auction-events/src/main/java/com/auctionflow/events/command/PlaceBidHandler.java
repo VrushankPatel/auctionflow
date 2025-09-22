@@ -6,6 +6,7 @@ import com.auctionflow.core.domain.commands.PlaceBidCommand;
 import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.events.EventStore;
 import com.auctionflow.timers.AntiSnipeExtension;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.context.event.EventListener;
@@ -35,6 +36,7 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
     @Override
     @Async
     @EventListener
+    @WithSpan("process-bid-command")
     public void handle(PlaceBidCommand command) {
         String lockKey = "auction:" + command.auctionId().value();
         RLock lock = redissonClient.getLock(lockKey);

@@ -1,0 +1,39 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+  datasource:
+    url: jdbc:postgresql://localhost:5432/auctionflow
+    username: auctionflow
+    password: password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+  health:
+    readiness-state:
+      enabled: true
+    liveness-state:
+      enabled: true
+
+otel:
+  service:
+    name: auction-events
+  traces:
+    exporter: jaeger
+    sampler: parentbased_always_on
+    sampler.arg: 0.1
+  exporter:
+    jaeger:
+      endpoint: http://localhost:14268/api/traces

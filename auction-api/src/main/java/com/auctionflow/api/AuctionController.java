@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -160,6 +161,7 @@ public class AuctionController {
 
     @PostMapping("/{id}/bids")
     @PreAuthorize("@auctionSecurityService.canBid(#id, authentication.principal)")
+    @WithSpan("place-bid")
     @Operation(
         summary = "Place a bid on an auction",
         description = "Places a bid on the specified auction. Bids are processed with server timestamp and sequence number for fairness."
