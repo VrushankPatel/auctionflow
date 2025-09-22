@@ -373,4 +373,6 @@ public class AuctionAggregate extends AggregateRoot {
     /** Returns the current highest bid amount, or null if no bids. */
     public Money getCurrentHighestBid() { return currentHighestBid; }
     public WinnerId getWinnerId() { return winnerId; }
+    /** Returns the bid increment strategy for this auction. */
+    public BidIncrement getBidIncrement() { return bidIncrement; }
 }

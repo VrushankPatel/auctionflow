@@ -9,6 +9,7 @@ import com.auctionflow.core.domain.events.AuctionCreatedEvent;
 import com.auctionflow.core.domain.events.BidPlacedEvent;
 import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.core.domain.events.ProxyBidOutbidEvent;
+import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.AuctionType;
 import com.auctionflow.core.domain.valueobjects.Money;
 import com.auctionflow.events.EventStore;
@@ -18,6 +19,8 @@ import com.auctionflow.timers.AntiSnipeExtension;
 import com.auctionflow.bidding.strategies.AutomatedBiddingService;
 import com.auctionflow.bidding.strategies.BidDecision;
 import com.auctionflow.bidding.strategies.StrategyBidDecision;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -31,19 +34,27 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
 
-    private final AtomicLong proxySeqGenerator = new AtomicLong(0);
     private final EventStore eventStore;
     private final KafkaTemplate<String, DomainEvent> kafkaTemplate;
     private final RedissonClient redissonClient;
     private final AntiSnipeExtension antiSnipeExtension;
     private final ProxyBidRepository proxyBidRepository;
     private final AutomatedBiddingService automatedBiddingService;
+    // In-memory cache for aggregates to avoid reconstruction on every bid
+    private final Cache<AuctionId, AggregateRoot> aggregateCache = Caffeine.newBuilder()
+            .maximumSize(10000) // Adjust based on active auctions
+            .expireAfterWrite(10, TimeUnit.MINUTES) // Expire after inactivity
+            .build();
+    // Scheduled executor for non-blocking retries
+    private final ScheduledExecutorService retryExecutor = Executors.newScheduledThreadPool(10);
 
     public PlaceBidHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient, AntiSnipeExtension antiSnipeExtension, ProxyBidRepository proxyBidRepository, AutomatedBiddingService automatedBiddingService) {
         this.eventStore = eventStore;
@@ -66,71 +77,87 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
             if (!lock.tryLock(10, 30, TimeUnit.SECONDS)) {
                 throw new RuntimeException("Could not acquire lock for auction " + command.auctionId());
             }
-            int maxRetries = 3;
-            long backoffMs = 100;
-            for (int attempt = 0; attempt <= maxRetries; attempt++) {
-                try {
-            // TODO: Optimize aggregate reconstruction with snapshots or in-memory caching for high-frequency auctions
-            List<DomainEvent> events = eventStore.getEvents(command.auctionId());
-                      AuctionType type = events.stream()
-                          .filter(e -> e instanceof AuctionCreatedEvent)
-                          .map(e -> ((AuctionCreatedEvent) e).getAuctionType())
-                          .findFirst()
-                          .orElse(AuctionType.ENGLISH_OPEN); // default for old auctions
-                      AggregateRoot aggregate;
-                      if (type == AuctionType.DUTCH) {
-                          DutchAuctionAggregate dutch = new DutchAuctionAggregate(events);
-                          dutch.handle(command);
-                          aggregate = dutch;
-                      } else {
-                          AuctionAggregate english = new AuctionAggregate(events);
-                          english.handle(command);
-                          aggregate = english;
-                      }
-                    List<DomainEvent> newEvents = aggregate.getDomainEvents();
-                    eventStore.save(newEvents, aggregate.getExpectedVersion());
-                    // Publish to Kafka
-                    for (DomainEvent event : newEvents) {
-                        kafkaTemplate.send("auction-events", event.getAggregateId().toString(), event);
-                    }
-
-                    // Handle proxy bidding after the initial bid is placed
-                    if (type != AuctionType.DUTCH) {
-                        handleProxyBidding(command.auctionId(), aggregate);
-                        handleAutomatedBidding(command.auctionId(), aggregate);
-                    }
-
-                    // Check for anti-snipe extension (only for English)
-                    if (type != AuctionType.DUTCH) {
-                        Instant bidTime = Instant.now(); // Approximate, since it's after handling
-                        AuctionAggregate english = (AuctionAggregate) aggregate;
-                        antiSnipeExtension.applyExtensionIfNeeded(
-                            english.getId(),
-                            bidTime,
-                            english.getEndTime(),
-                            english.getOriginalDuration(),
-                            english.getAntiSnipePolicy(),
-                            english.getExtensionsCount()
-                        );
-                    }
-
-                    aggregate.clearDomainEvents();
-                    break;
-                } catch (OptimisticLockException e) {
-                    if (attempt == maxRetries) {
-                        throw e;
-                    }
-                     // TODO: Replace blocking Thread.sleep with non-blocking retry mechanism using scheduled executor
-                     Thread.sleep(backoffMs);
-                    backoffMs *= 2;
-                }
-            }
+            processBidWithRetry(command, 0, 100);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted while handling command", e);
         } finally {
             if (lock.isHeldByCurrentThread()) {
                 lock.unlock();
+            }
+        }
+    }
+
+    /**
+     * Generates a globally monotonic sequence number for the auction using Redis atomic increment.
+     * Ensures fairness in distributed environments by providing strict ordering.
+     */
+    private long generateSeqNo(AuctionId auctionId) {
+        String key = "auction:seq:" + auctionId.value();
+        return redissonClient.getAtomicLong(key).incrementAndGet();
+    }
+
+    private void processBidWithRetry(PlaceBidCommand command, int attempt, long backoffMs) {
+        try {
+            // Use cached aggregate if available, otherwise reconstruct from events
+            AggregateRoot aggregate = aggregateCache.getIfPresent(command.auctionId());
+            AuctionType type;
+            if (aggregate == null) {
+                List<DomainEvent> events = eventStore.getEvents(command.auctionId());
+                type = events.stream()
+                    .filter(e -> e instanceof AuctionCreatedEvent)
+                    .map(e -> ((AuctionCreatedEvent) e).getAuctionType())
+                    .findFirst()
+                    .orElse(AuctionType.ENGLISH_OPEN);
+                if (type == AuctionType.DUTCH) {
+                    aggregate = new DutchAuctionAggregate(events);
+                } else {
+                    aggregate = new AuctionAggregate(events);
+                }
+            } else {
+                // Determine type from cached aggregate
+                if (aggregate instanceof DutchAuctionAggregate) {
+                    type = AuctionType.DUTCH;
+                } else {
+                    type = AuctionType.ENGLISH_OPEN;
+                }
+            }
+            aggregate.handle(command);
+            List<DomainEvent> newEvents = aggregate.getDomainEvents();
+            eventStore.save(newEvents, aggregate.getExpectedVersion());
+            // Update cache with new version
+            aggregateCache.put(command.auctionId(), aggregate);
+            // Publish to Kafka
+            for (DomainEvent event : newEvents) {
+                kafkaTemplate.send("auction-events", event.getAggregateId().toString(), event);
+            }
+
+            // Handle proxy bidding after the initial bid is placed
+            if (type != AuctionType.DUTCH) {
+                handleProxyBidding(command.auctionId(), aggregate);
+                handleAutomatedBidding(command.auctionId(), aggregate);
+            }
+
+            // Check for anti-snipe extension (only for English)
+            if (type != AuctionType.DUTCH) {
+                Instant bidTime = command.serverTs(); // Use precise server timestamp from command
+                AuctionAggregate english = (AuctionAggregate) aggregate;
+                antiSnipeExtension.applyExtensionIfNeeded(
+                    english.getId(),
+                    bidTime,
+                    english.getEndTime(),
+                    english.getOriginalDuration(),
+                    english.getAntiSnipePolicy(),
+                    english.getExtensionsCount()
+                );
+            }
+
+            aggregate.clearDomainEvents();
+        } catch (OptimisticLockException e) {
+            if (attempt < 3) {
+                retryExecutor.schedule(() -> processBidWithRetry(command, attempt + 1, backoffMs * 2), backoffMs, TimeUnit.MILLISECONDS);
+            } else {
+                throw new RuntimeException("Failed to process bid after retries", e);
             }
         }
     }
@@ -149,8 +176,9 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
         List<ProxyBidEntity> proxyBids = proxyBidRepository.findActiveProxyBidsHigherThan(auctionId.value(), currentHighest.toBigDecimal());
 
         for (ProxyBidEntity proxyBid : proxyBids) {
-            // Calculate next bid amount (simple increment for now)
-            Money nextBidAmount = currentHighest.add(new Money(BigDecimal.ONE));
+            // Calculate next bid amount using proper increment strategy
+            AuctionAggregate auctionAgg = (AuctionAggregate) aggregate;
+            Money nextBidAmount = auctionAgg.getBidIncrement().nextBid(currentHighest);
             if (nextBidAmount.toBigDecimal().compareTo(proxyBid.getMaxBid()) > 0) {
                 // Cannot bid, mark as outbid
                 proxyBidRepository.updateStatus(proxyBid.getId(), "OUTBID");
@@ -162,7 +190,7 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
 
             // Place the automatic bid
             Instant proxyServerTs = Instant.now();
-            long proxySeqNo = proxySeqGenerator.incrementAndGet();
+            long proxySeqNo = generateSeqNo(auctionId);
             PlaceBidCommand proxyCommand = new PlaceBidCommand(auctionId, proxyBid.getUserId(), nextBidAmount, "proxy-" + proxyBid.getId(), proxyServerTs, proxySeqNo);
             // Directly handle the proxy bid on the aggregate
             auctionAgg.handle(proxyCommand);
@@ -207,7 +235,7 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
                 // Place the automated bid for this user
                 BidderId bidderId = BidderId.fromString(strategyDecision.getStrategy().getBidderId());
                 Instant autoServerTs = Instant.now();
-                long autoSeqNo = proxySeqGenerator.incrementAndGet();
+                long autoSeqNo = generateSeqNo(auctionId);
                 PlaceBidCommand autoCommand = new PlaceBidCommand(auctionId, bidderId, decision.getBidAmount(), "automated-" + strategyDecision.getStrategy().getId(), autoServerTs, autoSeqNo);
 
                 // Handle the automated bid

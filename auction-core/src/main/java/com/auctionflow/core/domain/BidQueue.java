@@ -11,6 +11,7 @@ import java.util.Queue;
  * Efficient bid queue for high-frequency auctions.
  * Uses priority queue ordered by price-time priority: higher amount first, then lower seqNo for ties.
  * Provides O(log n) insertion and O(1) peek for processing.
+ * Thread-safe for concurrent access in high-frequency scenarios.
  */
 public class BidQueue {
     private final Queue<Bid> queue;
@@ -25,7 +26,7 @@ public class BidQueue {
      * Adds a bid to the queue.
      * @param bid the bid to add
      */
-    public void addBid(Bid bid) {
+    public synchronized void addBid(Bid bid) {
         queue.offer(bid);
     }
 
@@ -33,7 +34,7 @@ public class BidQueue {
      * Peeks at the highest priority bid without removing.
      * @return the highest priority bid or null if empty
      */
-    public Bid peekHighestBid() {
+    public synchronized Bid peekHighestBid() {
         return queue.peek();
     }
 
@@ -41,7 +42,7 @@ public class BidQueue {
      * Removes and returns the highest priority bid.
      * @return the highest priority bid or null if empty
      */
-    public Bid pollHighestBid() {
+    public synchronized Bid pollHighestBid() {
         return queue.poll();
     }
 
@@ -49,7 +50,7 @@ public class BidQueue {
      * Checks if the queue is empty.
      * @return true if empty
      */
-    public boolean isEmpty() {
+    public synchronized boolean isEmpty() {
         return queue.isEmpty();
     }
 
@@ -57,14 +58,14 @@ public class BidQueue {
      * Returns the size of the queue.
      * @return number of bids in queue
      */
-    public int size() {
+    public synchronized int size() {
         return queue.size();
     }
 
     /**
      * Clears all bids from the queue.
      */
-    public void clear() {
+    public synchronized void clear() {
         queue.clear();
     }
 }

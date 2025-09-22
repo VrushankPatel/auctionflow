@@ -6,7 +6,7 @@ import com.auctionflow.core.domain.valueobjects.Money;
 
 public class BidValidator {
     public ValidationResult validate(Money currentHighestBid, Money reservePrice, BidIncrement bidIncrement, BidderId bidderId, Money bidAmount) {
-        ValidationResult result = new ValidationResult();
+        ValidationResult result = ValidationResult.getInstance();
 
         // Bidder eligibility
         if (bidderId == null) {
