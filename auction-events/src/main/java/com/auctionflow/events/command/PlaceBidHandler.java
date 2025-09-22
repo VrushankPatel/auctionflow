@@ -134,18 +134,17 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
 
             // Handle proxy bidding after the initial bid is placed asynchronously to reduce latency
             if (type != AuctionType.DUTCH) {
+                final AggregateRoot currentAggregate = aggregate; // Capture current state
                 retryExecutor.submit(() -> {
                     String lockKey = "auction:proxy:" + command.auctionId().value();
                     RLock lock = redissonClient.getLock(lockKey);
                     try {
                         if (lock.tryLock(5, TimeUnit.SECONDS)) {
-                            // Reload aggregate to get latest state
-                            List<DomainEvent> events = eventStore.getEvents(command.auctionId());
-                            AggregateRoot freshAggregate = type == AuctionType.DUTCH ? new DutchAuctionAggregate(events) : new AuctionAggregate(events);
-                            handleProxyBidding(command.auctionId(), freshAggregate);
-                            handleAutomatedBidding(command.auctionId(), freshAggregate);
-                            // Update cache
-                            aggregateCache.put(command.auctionId(), freshAggregate);
+                            // Use current aggregate state to avoid reloading events
+                            handleProxyBidding(command.auctionId(), currentAggregate);
+                            handleAutomatedBidding(command.auctionId(), currentAggregate);
+                            // Update cache with updated aggregate
+                            aggregateCache.put(command.auctionId(), currentAggregate);
                         }
                     } catch (Exception e) {
                         // Log error

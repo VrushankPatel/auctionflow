@@ -28,8 +28,8 @@ class PercentageBidIncrement implements BidIncrement {
 
     @Override
     public Money nextBid(Money currentHighest) {
-        BigDecimal incrementAmount = currentHighest.amount().multiply(percentage);
-        Money increment = new Money(incrementAmount, currentHighest.currency());
+        BigDecimal incrementAmount = currentHighest.toBigDecimal().multiply(percentage);
+        Money increment = Money.usd(incrementAmount);
         return currentHighest.add(increment);
     }
 }

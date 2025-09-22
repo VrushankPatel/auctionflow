@@ -282,7 +282,7 @@ public class AuctionController {
         UUID bidderId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String clientIp = getClientIp(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
-        Money amount = new Money(request.getAmount());
+        Money amount = Money.usd(request.getAmount());
         String idempotencyKey = request.getIdempotencyKey();
 
         // Kill switch: check if bidding is globally disabled
@@ -489,7 +489,7 @@ public class AuctionController {
         addRateLimitHeaders(response, perIpLimiter, clientIp);
         addRateLimitHeaders(response, perAuctionLimiter, id);
 
-        Money amount = new Money(request.getAmount());
+        Money amount = Money.usd(request.getAmount());
         RevealBidCommand cmd = new RevealBidCommand(auctionId, new BidderId(bidderId), amount, request.getSalt());
         commandBus.send(cmd);
         return ResponseEntity.ok().build();
@@ -676,7 +676,7 @@ public class AuctionController {
         BidderId buyerId = new BidderId(UUID.fromString(userId));
         // TODO: get sellerId from auction
         SellerId sellerId = new SellerId(UUID.randomUUID()); // placeholder
-        Money amount = new Money(request.getAmount());
+        Money amount = Money.usd(request.getAmount());
         MakeOfferCommand cmd = new MakeOfferCommand(auctionId, buyerId, sellerId, amount);
         commandBus.send(cmd);
         return ResponseEntity.status(HttpStatus.CREATED).build();

@@ -131,7 +131,7 @@ public class AuctionGraphQLController {
     @MutationMapping
     public AuctionDetailsDTO placeBid(@Argument String auctionId, @Argument PlaceBidInput input) {
         UUID bidderId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Money amount = new Money(BigDecimal.valueOf(input.getAmount()));
+        Money amount = Money.usd(BigDecimal.valueOf(input.getAmount()));
         PlaceBidCommand cmd = new PlaceBidCommand(new AuctionId(auctionId), bidderId, amount, input.getIdempotencyKey());
         commandBus.send(cmd);
         // Return updated auction
