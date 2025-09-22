@@ -1,0 +1,11 @@
+rootProject.name = 'auction-flow-parent'
+
+include 'auction-core'
+include 'auction-api'
+include 'auction-events'
+include 'auction-timers'
+include 'auction-notifications'
+include 'auction-payments'
+include 'auction-analytics'
+include 'auction-common'
+include 'auction-tests'
