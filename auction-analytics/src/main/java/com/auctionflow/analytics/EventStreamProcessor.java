@@ -8,8 +8,10 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -54,40 +56,49 @@ public class EventStreamProcessor {
                 .register(meterRegistry);
     }
 
-    @KafkaListener(topics = "bid-events", groupId = "analytics-group")
-    @WithSpan("process-bid-event-stream")
-    public void processBidEvent(DomainEvent event) {
-        if (event instanceof BidPlacedEvent) {
-            BidPlacedEvent bidEvent = (BidPlacedEvent) event;
-            totalBids.increment();
-            acceptedBids.increment();
-            auctionBidCounts.computeIfAbsent(bidEvent.getAuctionId(), k -> new AtomicInteger(0)).incrementAndGet();
-            logger.info("Processed BidPlacedEvent for auction {}", bidEvent.getAuctionId());
-        } else if (event instanceof BidRejectedEvent) {
-            totalBids.increment();
-            logger.info("Processed BidRejectedEvent for auction {}", ((BidRejectedEvent) event).getAuctionId());
+    @KafkaListener(topics = "bid-events", groupId = "analytics-group", containerFactory = "kafkaListenerContainerFactory")
+    @WithSpan("process-bid-events-batch")
+    public void processBidEventsBatch(List<DomainEvent> events, Acknowledgment acknowledgment) {
+        for (DomainEvent event : events) {
+            if (event instanceof BidPlacedEvent) {
+                BidPlacedEvent bidEvent = (BidPlacedEvent) event;
+                totalBids.increment();
+                acceptedBids.increment();
+                auctionBidCounts.computeIfAbsent(bidEvent.getAuctionId(), k -> new AtomicInteger(0)).incrementAndGet();
+                logger.info("Processed BidPlacedEvent for auction {}", bidEvent.getAuctionId());
+            } else if (event instanceof BidRejectedEvent) {
+                totalBids.increment();
+                logger.info("Processed BidRejectedEvent for auction {}", ((BidRejectedEvent) event).getAuctionId());
+            }
         }
+        acknowledgment.acknowledge(); // Batch commit
     }
 
-    @KafkaListener(topics = "auction-events", groupId = "analytics-group")
-    @WithSpan("process-auction-event-stream")
-    public void processAuctionEvent(DomainEvent event) {
-        if (event instanceof AuctionCreatedEvent) {
-            activeAuctions.incrementAndGet();
-            logger.info("Auction created: {}", ((AuctionCreatedEvent) event).getAuctionId());
-        } else if (event instanceof AuctionClosedEvent) {
-            activeAuctions.decrementAndGet();
-            logger.info("Auction closed: {}", ((AuctionClosedEvent) event).getAuctionId());
-        } else if (event instanceof AuctionExtendedEvent) {
-            // Extension, still active
+    @KafkaListener(topics = "auction-events", groupId = "analytics-group", containerFactory = "kafkaListenerContainerFactory")
+    @WithSpan("process-auction-events-batch")
+    public void processAuctionEventsBatch(List<DomainEvent> events, Acknowledgment acknowledgment) {
+        for (DomainEvent event : events) {
+            if (event instanceof AuctionCreatedEvent) {
+                activeAuctions.incrementAndGet();
+                logger.info("Auction created: {}", ((AuctionCreatedEvent) event).getAuctionId());
+            } else if (event instanceof AuctionClosedEvent) {
+                activeAuctions.decrementAndGet();
+                logger.info("Auction closed: {}", ((AuctionClosedEvent) event).getAuctionId());
+            } else if (event instanceof AuctionExtendedEvent) {
+                // Extension, still active
+            }
         }
+        acknowledgment.acknowledge(); // Batch commit
     }
 
-    @KafkaListener(topics = "notification-events", groupId = "analytics-group")
-    @WithSpan("process-notification-event-stream")
-    public void processNotificationEvent(DomainEvent event) {
-        if (event instanceof WinnerDeclaredEvent) {
-            logger.info("Winner declared for auction {}", ((WinnerDeclaredEvent) event).getAuctionId());
+    @KafkaListener(topics = "notification-events", groupId = "analytics-group", containerFactory = "kafkaListenerContainerFactory")
+    @WithSpan("process-notification-events-batch")
+    public void processNotificationEventsBatch(List<DomainEvent> events, Acknowledgment acknowledgment) {
+        for (DomainEvent event : events) {
+            if (event instanceof WinnerDeclaredEvent) {
+                logger.info("Winner declared for auction {}", ((WinnerDeclaredEvent) event).getAuctionId());
+            }
         }
+        acknowledgment.acknowledge(); // Batch commit
     }
 }

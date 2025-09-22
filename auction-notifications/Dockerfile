@@ -29,8 +29,11 @@ RUN apt-get update && apt-get install -y wget unzip && \
     ln -s `pwd`/flyway-10.0.1/flyway /usr/local/bin/flyway && \
     apt-get remove -y wget unzip && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build /app/auction-notifications/build/libs/*.jar app.jar
-COPY --from=build /app/auction-notifications/src/main/resources/db/migration /app/db/migration
+ COPY --from=build /app/auction-notifications/build/libs/*.jar app.jar
+ COPY --from=build /app/auction-notifications/src/main/resources/db/migration /app/db/migration
+
+ # Download async-profiler for advanced profiling
+ RUN wget -qO- https://github.com/async-profiler/async-profiler/releases/download/v2.9/async-profiler-2.9-linux-x64.tar.gz | tar xvz && mv async-profiler-2.9 /app/async-profiler
 
 EXPOSE 8080
 

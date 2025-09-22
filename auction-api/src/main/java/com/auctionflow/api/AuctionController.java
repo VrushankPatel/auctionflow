@@ -120,7 +120,7 @@ public class AuctionController {
             @RequestParam(defaultValue = "10") int size) {
         ListActiveAuctionsQuery query = new ListActiveAuctionsQuery(category, sellerId, page, size);
         ActiveAuctionsDTO dto = listHandler.handle(query);
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok().header("Cache-Control", "max-age=30").body(dto);
     }
 
     @PatchMapping("/{id}")
@@ -156,7 +156,7 @@ public class AuctionController {
     public ResponseEntity<AuctionDetailsDTO> getAuction(@PathVariable String id) {
         GetAuctionDetailsQuery query = new GetAuctionDetailsQuery(id);
         Optional<AuctionDetailsDTO> dto = detailsHandler.handle(query);
-        return dto.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        return dto.map(d -> ResponseEntity.ok().header("Cache-Control", "max-age=60").body(d)).orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/{id}/bids")
@@ -248,7 +248,7 @@ public class AuctionController {
                                                         @RequestParam(defaultValue = "10") int size) {
         GetBidHistoryQuery query = new GetBidHistoryQuery(id, page, size);
         BidHistoryDTO dto = bidHistoryHandler.handle(query);
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok().header("Cache-Control", "no-cache").body(dto);
     }
 
     @PostMapping("/{id}/buy-now")

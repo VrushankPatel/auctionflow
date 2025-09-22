@@ -1,4 +1,4 @@
-package com.auctionflow.notifications;
+package com.auctionflow.analytics;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,7 +21,7 @@ public class KafkaConfig {
     public ConsumerFactory<String, Object> consumerFactory(@Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "notification-service");
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "analytics-group");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.springframework.kafka.support.serializer.JsonDeserializer");
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false); // Manual commits for batching
@@ -38,7 +38,7 @@ public class KafkaConfig {
         ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
         factory.setBatchListener(true); // Enable batch listening
-        factory.setConcurrency(3); // Parallel processing with 3 threads
+        factory.setConcurrency(2); // Parallel processing with 2 threads
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE); // Manual commits
         return factory;
     }

@@ -93,4 +93,23 @@ public class KafkaEventPublisher {
             logger.error("Failed to send security event {} to DLQ", event.getEventId(), dlqEx);
         }
     }
+
+    /**
+     * Sends a tombstone message (null value) to a compacted topic for cleanup.
+     * @param topic the topic to send to
+     * @param key the key to tombstone
+     */
+    public void sendTombstone(String topic, String key) {
+        kafkaTemplate.send(topic, key, null).addCallback(new ListenableFutureCallback<SendResult<String, DomainEvent>>() {
+            @Override
+            public void onSuccess(SendResult<String, DomainEvent> result) {
+                logger.info("Successfully sent tombstone for key {} to topic {}", key, topic);
+            }
+
+            @Override
+            public void onFailure(Throwable ex) {
+                logger.error("Failed to send tombstone for key {} to topic {}", key, topic, ex);
+            }
+        });
+    }
 }

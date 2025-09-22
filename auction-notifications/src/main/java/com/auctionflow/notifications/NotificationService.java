@@ -12,11 +12,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -43,33 +45,41 @@ public class NotificationService {
         this.batchedRepository = batchedRepository;
     }
 
-    @KafkaListener(topics = "auction-events", groupId = "notification-service")
-    @WithSpan("handle-auction-event")
-    public void handleAuctionEvent(DomainEvent event) {
-        if (event instanceof AuctionExtendedEvent) {
-            handleAuctionExtended((AuctionExtendedEvent) event);
-        } else if (event instanceof AuctionClosedEvent) {
-            // Perhaps notify watchers that auction closed
-            handleAuctionClosed((AuctionClosedEvent) event);
+    @KafkaListener(topics = "auction-events", groupId = "notification-service", containerFactory = "kafkaListenerContainerFactory")
+    @WithSpan("handle-auction-events-batch")
+    public void handleAuctionEventsBatch(List<DomainEvent> events, Acknowledgment acknowledgment) {
+        for (DomainEvent event : events) {
+            if (event instanceof AuctionExtendedEvent) {
+                handleAuctionExtended((AuctionExtendedEvent) event);
+            } else if (event instanceof AuctionClosedEvent) {
+                handleAuctionClosed((AuctionClosedEvent) event);
+            }
         }
+        acknowledgment.acknowledge(); // Batch commit
     }
 
-    @KafkaListener(topics = "bid-events", groupId = "notification-service")
-    @WithSpan("handle-bid-event")
-    public void handleBidEvent(DomainEvent event) {
-        if (event instanceof BidPlacedEvent) {
-            handleBidPlaced((BidPlacedEvent) event);
-        } else if (event instanceof BidRejectedEvent) {
-            handleBidRejected((BidRejectedEvent) event);
+    @KafkaListener(topics = "bid-events", groupId = "notification-service", containerFactory = "kafkaListenerContainerFactory")
+    @WithSpan("handle-bid-events-batch")
+    public void handleBidEventsBatch(List<DomainEvent> events, Acknowledgment acknowledgment) {
+        for (DomainEvent event : events) {
+            if (event instanceof BidPlacedEvent) {
+                handleBidPlaced((BidPlacedEvent) event);
+            } else if (event instanceof BidRejectedEvent) {
+                handleBidRejected((BidRejectedEvent) event);
+            }
         }
+        acknowledgment.acknowledge(); // Batch commit
     }
 
-    @KafkaListener(topics = "notification-events", groupId = "notification-service")
-    @WithSpan("handle-notification-event")
-    public void handleNotificationEvent(DomainEvent event) {
-        if (event instanceof WinnerDeclaredEvent) {
-            handleWinnerDeclared((WinnerDeclaredEvent) event);
+    @KafkaListener(topics = "notification-events", groupId = "notification-service", containerFactory = "kafkaListenerContainerFactory")
+    @WithSpan("handle-notification-events-batch")
+    public void handleNotificationEventsBatch(List<DomainEvent> events, Acknowledgment acknowledgment) {
+        for (DomainEvent event : events) {
+            if (event instanceof WinnerDeclaredEvent) {
+                handleWinnerDeclared((WinnerDeclaredEvent) event);
+            }
         }
+        acknowledgment.acknowledge(); // Batch commit
     }
 
     private void handleBidPlaced(BidPlacedEvent event) {

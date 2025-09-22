@@ -67,14 +67,31 @@ CREATE TABLE watchers (
     PRIMARY KEY (user_id, auction_id)
 );
 
--- Auction events table (append-only event log)
+-- Auction events table (append-only event log) - partitioned by month
 CREATE TABLE auction_events (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGSERIAL NOT NULL,
     auction_id BIGINT NOT NULL REFERENCES auctions(id),
     type VARCHAR(255) NOT NULL,
     payload_json JSONB,
     ts TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
+) PARTITION BY RANGE (ts);
+
+-- Create initial partitions for current and next 12 months
+DO $$
+DECLARE
+    current_month DATE := DATE_TRUNC('month', CURRENT_DATE);
+    i INT := 0;
+    start_date DATE;
+    end_date DATE;
+    partition_name TEXT;
+BEGIN
+    FOR i IN 0..12 LOOP
+        start_date := current_month + INTERVAL '1 month' * i;
+        end_date := start_date + INTERVAL '1 month';
+        partition_name := 'auction_events_' || TO_CHAR(start_date, 'YYYY_MM');
+        EXECUTE 'CREATE TABLE ' || partition_name || ' PARTITION OF auction_events FOR VALUES FROM (''' || start_date || ''') TO (''' || end_date || ''');';
+    END LOOP;
+END $$;
 
 -- Payments table
 CREATE TABLE payments (
@@ -119,9 +136,9 @@ CREATE TABLE extension_policies (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_auctions_status ON auctions (status);
-CREATE INDEX idx_auctions_end_ts ON auctions (end_ts);
-CREATE INDEX idx_bids_auction_id_amount ON bids (auction_id, amount DESC);
-CREATE INDEX idx_bids_bidder_id ON bids (bidder_id);
-CREATE INDEX idx_auction_events_auction_id_ts ON auction_events (auction_id, ts);
-CREATE INDEX idx_payments_auction_id ON payments (auction_id);
+CREATE INDEX idx_auctions_status_end_ts ON auctions (status, end_ts);
+CREATE INDEX idx_auctions_seller_id_status ON auctions (item_id, status); -- since item_id links to seller
+CREATE INDEX idx_bids_auction_id_server_ts_accepted ON bids (auction_id, server_ts DESC, accepted_bool);
+CREATE INDEX idx_bids_bidder_id_server_ts ON bids (bidder_id, server_ts DESC);
+CREATE INDEX idx_auction_events_auction_id_ts_type ON auction_events (auction_id, ts, type);
+CREATE INDEX idx_payments_auction_id_status ON payments (auction_id, status);

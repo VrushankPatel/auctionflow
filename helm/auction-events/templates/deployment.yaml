@@ -18,10 +18,12 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
         - containerPort: 8080
-        env:
-        - name: SPRING_CONFIG_LOCATION
-          value: "file:/app/config/application.yml"
-        envFrom:
+         env:
+         - name: SPRING_CONFIG_LOCATION
+           value: "file:/app/config/application.yml"
+         - name: JAVA_OPTS
+           value: "-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:G1HeapRegionSize=16m -XX:+UseStringDeduplication -Xms256m -Xmx384m -XX:+FlightRecorder -javaagent:/app/async-profiler/lib/async-profiler.jar"
+         envFrom:
         - secretRef:
             name: {{ include "auction-api.fullname" . }}-secret
         resources:

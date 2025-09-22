@@ -1,7 +1,8 @@
 SELECT pg_create_physical_replication_slot('replica_slot');
 
+-- Partitioned event_store table by month
 CREATE TABLE IF NOT EXISTS event_store (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGSERIAL NOT NULL,
     aggregate_id VARCHAR(255) NOT NULL,
     aggregate_type VARCHAR(255) NOT NULL,
     event_type VARCHAR(255) NOT NULL,
@@ -9,7 +10,32 @@ CREATE TABLE IF NOT EXISTS event_store (
     event_metadata JSONB,
     sequence_number BIGINT NOT NULL,
     timestamp TIMESTAMP WITH TIME ZONE NOT NULL
-);
+) PARTITION BY RANGE (timestamp);
+
+-- Create initial partitions (current month and next few)
+-- Function to create partition for a given month
+CREATE OR REPLACE FUNCTION create_event_store_partition(year_month TEXT) RETURNS VOID AS $$
+DECLARE
+    start_date DATE := TO_DATE(year_month || '-01', 'YYYY-MM-DD');
+    end_date DATE := start_date + INTERVAL '1 month';
+BEGIN
+    EXECUTE 'CREATE TABLE IF NOT EXISTS event_store_' || year_month || ' PARTITION OF event_store FOR VALUES FROM (''' || start_date || ''') TO (''' || end_date || ''');';
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create partitions for current and next 12 months
+DO $$
+DECLARE
+    current_month DATE := DATE_TRUNC('month', CURRENT_DATE);
+    i INT := 0;
+BEGIN
+    FOR i IN 0..12 LOOP
+        PERFORM create_event_store_partition(TO_CHAR(current_month + INTERVAL '1 month' * i, 'YYYY_MM'));
+    END LOOP;
+END $$;
+
+-- Drop the function after use
+DROP FUNCTION create_event_store_partition(TEXT);
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_event_store_aggregate_id_sequence
 ON event_store (aggregate_id, sequence_number);
@@ -62,9 +88,12 @@ CREATE TABLE auction_details (
     created_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX idx_auction_details_status ON auction_details (status);
-CREATE INDEX idx_auction_details_end_ts ON auction_details (end_ts);
-CREATE INDEX idx_auction_details_category ON auction_details (category);
+-- Covering indexes for common queries
+CREATE INDEX idx_auction_details_status_end_ts_category ON auction_details (status, end_ts, category);
+CREATE INDEX idx_auction_details_seller_id_status ON auction_details (seller_id, status);
+
+CREATE INDEX idx_bid_history_auction_id_server_ts_accepted ON bid_history (auction_id, server_ts DESC, accepted);
+CREATE INDEX idx_bid_history_bidder_id_server_ts ON bid_history (bidder_id, server_ts DESC);
 
 -- Bid history table (for bid listings)
 CREATE TABLE bid_history (
@@ -243,3 +272,44 @@ CREATE TABLE audit_trail (
 CREATE INDEX idx_audit_trail_user_id ON audit_trail (user_id);
 CREATE INDEX idx_audit_trail_timestamp ON audit_trail (timestamp);
 CREATE INDEX idx_audit_trail_entity_type_id ON audit_trail (entity_type, entity_id);
+
+-- Materialized views for reports
+CREATE MATERIALIZED VIEW daily_auction_stats AS
+SELECT
+    DATE(created_at) AS date,
+    COUNT(*) AS total_auctions,
+    COUNT(CASE WHEN status = 'CLOSED' THEN 1 END) AS closed_auctions,
+    AVG(current_highest_bid) AS avg_final_price,
+    SUM(bid_count) AS total_bids
+FROM auction_details
+WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY DATE(created_at)
+ORDER BY date DESC;
+
+CREATE MATERIALIZED VIEW user_activity_stats AS
+SELECT
+    bidder_id,
+    COUNT(*) AS total_bids,
+    COUNT(DISTINCT auction_id) AS auctions_participated,
+    MAX(server_ts) AS last_bid_time,
+    AVG(amount) AS avg_bid_amount
+FROM bid_history
+WHERE accepted = true
+GROUP BY bidder_id
+ORDER BY total_bids DESC;
+
+CREATE MATERIALIZED VIEW seller_performance_stats AS
+SELECT
+    seller_id,
+    COUNT(*) AS total_auctions,
+    COUNT(CASE WHEN status = 'CLOSED' AND current_highest_bid >= reserve_price THEN 1 END) AS successful_auctions,
+    AVG(current_highest_bid) AS avg_sale_price,
+    SUM(bid_count) AS total_bids_received
+FROM auction_details
+GROUP BY seller_id
+ORDER BY total_auctions DESC;
+
+-- Indexes on materialized views
+CREATE INDEX idx_daily_auction_stats_date ON daily_auction_stats (date);
+CREATE INDEX idx_user_activity_stats_bidder_id ON user_activity_stats (bidder_id);
+CREATE INDEX idx_seller_performance_stats_seller_id ON seller_performance_stats (seller_id);
