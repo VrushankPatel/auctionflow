@@ -7,6 +7,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'org.springframework.boot:spring-boot-starter-hateoas'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
+    implementation 'io.github.resilience4j:resilience4j-ratelimiter'
+    implementation 'io.github.resilience4j:resilience4j-circuitbreaker'
+    implementation 'io.github.resilience4j:resilience4j-ratelimiter-redis'
     implementation project(':auction-core')
     implementation project(':auction-common')
 }
