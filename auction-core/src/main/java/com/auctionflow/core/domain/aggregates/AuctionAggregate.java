@@ -209,7 +209,7 @@ public class AuctionAggregate extends AggregateRoot {
         try {
             ValidationResult result = validator.validate(currentHighestBid, reservePrice, bidIncrement, new BidderId(command.bidderId()), command.amount());
             if (!result.isValid()) {
-                throw new IllegalStateException(result.getErrors().get(0));
+                throw new IllegalStateException(result.getFirstError());
             }
         } finally {
             BID_VALIDATOR_POOL.release(validator);
@@ -221,14 +221,34 @@ public class AuctionAggregate extends AggregateRoot {
     }
 
     /**
-     * Processes queued bids in price-time priority order, up to a batch size to prevent blocking.
+     * Calculates adaptive batch size based on current queue size to balance latency and throughput.
+     * For small queues, use smaller batches to minimize processing latency.
+     * For large queues, use larger batches to improve throughput and catch up.
+     *
+     * @param queueSize current size of the bid queue
+     * @return adaptive batch size
+     */
+    private int calculateAdaptiveBatchSize(int queueSize) {
+        if (queueSize <= 5) {
+            return Math.min(queueSize, 3); // Process 1-3 bids for small queues
+        } else if (queueSize <= 20) {
+            return 5; // Moderate batch for medium queues
+        } else if (queueSize <= 100) {
+            return 10; // Standard batch for larger queues
+        } else {
+            return 20; // Large batch for very high-frequency scenarios
+        }
+    }
+
+    /**
+     * Processes all queued bids in price-time priority order to ensure immediate processing in high-frequency scenarios.
      * Emits BidPlacedEvent for each bid and checks for reserve met.
-     * If more bids remain, they will be processed in subsequent calls.
+     * Limited to maximum batch size to prevent excessive processing.
      */
     private void processQueuedBids() {
-        int batchSize = 10; // Process up to 10 bids per batch to minimize latency
+        int maxBatchSize = 100; // Maximum bids to process in one call to prevent blocking
         int processed = 0;
-        while (!bidQueue.isEmpty() && processed < batchSize) {
+        while (!bidQueue.isEmpty() && processed < maxBatchSize) {
             Bid bid = bidQueue.pollHighestBid();
             if (bid != null) {
                 UUID eventId = UUID.randomUUID();

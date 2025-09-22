@@ -3,7 +3,6 @@ package com.auctionflow.api;
 import com.auctionflow.api.dtos.*;
 import com.auctionflow.api.entities.Item;
 import java.time.Instant;
-import java.util.concurrent.atomic.AtomicLong;
 import com.auctionflow.api.entities.User;
 import com.auctionflow.api.queryhandlers.GetAuctionDetailsQueryHandler;
 import com.auctionflow.api.queryhandlers.GetBidHistoryQueryHandler;
@@ -17,6 +16,7 @@ import com.auctionflow.api.services.ProxyBidService;
 import com.auctionflow.api.services.SuspiciousActivityService;
 import com.auctionflow.api.services.UserService;
 import com.auctionflow.common.service.FeatureFlagService;
+import com.auctionflow.common.service.SequenceService;
 import com.auctionflow.core.domain.commands.*;
 import com.auctionflow.core.domain.commands.MakeOfferCommand;
 import com.auctionflow.core.domain.valueobjects.AntiSnipePolicy;
@@ -59,7 +59,7 @@ import java.util.UUID;
 @Tag(name = "Auctions", description = "Auction management endpoints")
 public class AuctionController {
 
-    private final AtomicLong sequenceGenerator = new AtomicLong(0);
+    private final SequenceService sequenceService;
     private final CommandBus commandBus;
     private final ListActiveAuctionsQueryHandler listHandler;
     private final GetAuctionDetailsQueryHandler detailsHandler;
@@ -71,7 +71,8 @@ public class AuctionController {
     private final ItemRepository itemRepository;
     private final FeatureFlagService featureFlagService;
 
-    public AuctionController(CommandBus commandBus,
+    public AuctionController(SequenceService sequenceService,
+                              CommandBus commandBus,
                               ListActiveAuctionsQueryHandler listHandler,
                               GetAuctionDetailsQueryHandler detailsHandler,
                               GetBidHistoryQueryHandler bidHistoryHandler,
@@ -81,6 +82,7 @@ public class AuctionController {
                               ItemValidationService itemValidationService,
                               ItemRepository itemRepository,
                               FeatureFlagService featureFlagService) {
+        this.sequenceService = sequenceService;
         this.commandBus = commandBus;
         this.listHandler = listHandler;
         this.detailsHandler = detailsHandler;
@@ -323,7 +325,7 @@ public class AuctionController {
         addRateLimitHeaders(response, perAuctionLimiter, id);
 
         Instant serverTs = Instant.now();
-        long seqNo = sequenceGenerator.incrementAndGet();
+        long seqNo = sequenceService.nextSequence(auctionId);
         PlaceBidCommand cmd = new PlaceBidCommand(auctionId, bidderId, amount, idempotencyKey, serverTs, seqNo);
         try {
             commandBus.send(cmd);

@@ -33,4 +33,14 @@ public class ValidationResult {
     public List<String> getErrors() {
         return new ArrayList<>(errors);
     }
+
+    /**
+     * Returns the first error without allocating a new list.
+     * For use in hot paths where only the first error is needed.
+     *
+     * @return the first error message, or null if no errors
+     */
+    public String getFirstError() {
+        return errors.isEmpty() ? null : errors.get(0);
+    }
 }
