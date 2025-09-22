@@ -70,6 +70,7 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
             long backoffMs = 100;
             for (int attempt = 0; attempt <= maxRetries; attempt++) {
                 try {
+            // TODO: Optimize aggregate reconstruction with snapshots or in-memory caching for high-frequency auctions
             List<DomainEvent> events = eventStore.getEvents(command.auctionId());
                       AuctionType type = events.stream()
                           .filter(e -> e instanceof AuctionCreatedEvent)
@@ -119,8 +120,8 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
                     if (attempt == maxRetries) {
                         throw e;
                     }
-                    // Backoff
-                    Thread.sleep(backoffMs);
+                     // TODO: Replace blocking Thread.sleep with non-blocking retry mechanism using scheduled executor
+                     Thread.sleep(backoffMs);
                     backoffMs *= 2;
                 }
             }

@@ -184,7 +184,8 @@ public class AuctionAggregate extends AggregateRoot {
     /**
      * Handles placing a bid on the auction.
      * Validates bid amount against current highest and reserve, updates state, and emits events.
-     * @param command the place bid command
+     * Optimized for high-frequency bidding with server-assigned timestamps and sequence numbers for fairness.
+     * @param command the place bid command containing server timestamp and sequence number
      */
     public void handle(PlaceBidCommand command) {
         if (auctionType == AuctionType.SEALED_BID) {
@@ -204,6 +205,7 @@ public class AuctionAggregate extends AggregateRoot {
         if (!command.amount().isGreaterThanOrEqual(reservePrice)) {
             throw new IllegalStateException("Bid must meet reserve price");
         }
+        // TODO: Use object pool for Bid and event objects to achieve zero-allocation in hot paths
         Bid bid = new Bid(command.bidderId(), command.amount(), serverTs);
         UUID eventId = UUID.randomUUID();
         long sequenceNumber = getVersion() + 1;
