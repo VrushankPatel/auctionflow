@@ -1,5 +1,6 @@
 package com.auctionflow.core.domain.events;
 
+import com.auctionflow.core.domain.valueobjects.AntiSnipePolicy;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.ItemId;
 import com.auctionflow.core.domain.valueobjects.Money;
@@ -13,14 +14,16 @@ public class AuctionCreatedEvent extends DomainEvent {
     private final Money buyNowPrice;
     private final Instant startTime;
     private final Instant endTime;
+    private final AntiSnipePolicy antiSnipePolicy;
 
-    public AuctionCreatedEvent(AuctionId auctionId, ItemId itemId, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, UUID eventId, Instant timestamp, long sequenceNumber) {
+    public AuctionCreatedEvent(AuctionId auctionId, ItemId itemId, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, AntiSnipePolicy antiSnipePolicy, UUID eventId, Instant timestamp, long sequenceNumber) {
         super(auctionId, eventId, timestamp, sequenceNumber);
         this.itemId = itemId;
         this.reservePrice = reservePrice;
         this.buyNowPrice = buyNowPrice;
         this.startTime = startTime;
         this.endTime = endTime;
+        this.antiSnipePolicy = antiSnipePolicy;
         if (auctionId == null) {
             throw new IllegalArgumentException("AuctionId cannot be null");
         }
@@ -45,5 +48,9 @@ public class AuctionCreatedEvent extends DomainEvent {
 
     public Instant getEndTime() {
         return endTime;
+    }
+
+    public AntiSnipePolicy getAntiSnipePolicy() {
+        return antiSnipePolicy;
     }
 }

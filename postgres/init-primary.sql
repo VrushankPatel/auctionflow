@@ -116,3 +116,20 @@ CREATE TABLE refresh_status (
 );
 
 CREATE INDEX idx_refresh_status_last_event_id ON refresh_status (last_event_id);
+
+-- Scheduled jobs table for durable timer scheduling
+CREATE TABLE scheduled_jobs (
+    job_id UUID PRIMARY KEY,
+    auction_id BIGINT NOT NULL,
+    execute_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    attempts INT NOT NULL DEFAULT 0,
+    lease_until TIMESTAMP WITH TIME ZONE,
+    leased_by VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_scheduled_jobs_execute_at_status ON scheduled_jobs (execute_at, status);
+CREATE INDEX idx_scheduled_jobs_lease_until ON scheduled_jobs (lease_until);
+CREATE INDEX idx_scheduled_jobs_auction_id ON scheduled_jobs (auction_id);

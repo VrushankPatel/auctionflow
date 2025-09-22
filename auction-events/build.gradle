@@ -9,4 +9,5 @@ dependencies {
     implementation 'org.redisson:redisson-spring-boot-starter:3.17.0'
     implementation project(':auction-core')
     implementation project(':auction-common')
+    implementation project(':auction-timers')
 }

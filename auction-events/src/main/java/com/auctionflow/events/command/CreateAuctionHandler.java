@@ -4,6 +4,7 @@ import com.auctionflow.core.domain.aggregates.AuctionAggregate;
 import com.auctionflow.core.domain.commands.CreateAuctionCommand;
 import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.events.EventStore;
+import com.auctionflow.timers.AuctionTimerService;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.context.event.EventListener;
@@ -20,11 +21,13 @@ public class CreateAuctionHandler implements CommandHandler<CreateAuctionCommand
     private final EventStore eventStore;
     private final KafkaTemplate<String, DomainEvent> kafkaTemplate;
     private final RedissonClient redissonClient;
+    private final AuctionTimerService auctionTimerService;
 
-    public CreateAuctionHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient) {
+    public CreateAuctionHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient, AuctionTimerService auctionTimerService) {
         this.eventStore = eventStore;
         this.kafkaTemplate = kafkaTemplate;
         this.redissonClient = redissonClient;
+        this.auctionTimerService = auctionTimerService;
     }
 
     @Override
@@ -45,6 +48,8 @@ public class CreateAuctionHandler implements CommandHandler<CreateAuctionCommand
             for (DomainEvent event : events) {
                 kafkaTemplate.send("auction-events", event.getAggregateId().toString(), event);
             }
+            // Schedule auction close timer
+            auctionTimerService.scheduleAuctionClose(aggregate.getId(), aggregate.getEndTime());
             aggregate.clearDomainEvents();
         } finally {
             if (lock.isHeldByCurrentThread()) {

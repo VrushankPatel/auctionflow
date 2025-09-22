@@ -1,11 +1,12 @@
 package com.auctionflow.core.domain.commands;
 
+import com.auctionflow.core.domain.valueobjects.AntiSnipePolicy;
 import com.auctionflow.core.domain.valueobjects.ItemId;
 import com.auctionflow.core.domain.valueobjects.Money;
 
 import java.time.Instant;
 
-public record CreateAuctionCommand(ItemId itemId, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime) {
+public record CreateAuctionCommand(ItemId itemId, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, AntiSnipePolicy antiSnipePolicy) {
     public CreateAuctionCommand {
         if (itemId == null) {
             throw new IllegalArgumentException("ItemId cannot be null");
@@ -24,6 +25,9 @@ public record CreateAuctionCommand(ItemId itemId, Money reservePrice, Money buyN
         }
         if (startTime.isAfter(endTime)) {
             throw new IllegalArgumentException("StartTime must be before EndTime");
+        }
+        if (antiSnipePolicy == null) {
+            throw new IllegalArgumentException("AntiSnipePolicy cannot be null");
         }
     }
 }

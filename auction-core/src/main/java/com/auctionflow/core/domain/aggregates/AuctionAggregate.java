@@ -5,6 +5,7 @@ import com.auctionflow.core.domain.events.*;
 import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.core.domain.valueobjects.*;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -20,12 +21,16 @@ public class AuctionAggregate extends AggregateRoot {
     private AuctionStatus status;
     private Instant startTime;
     private Instant endTime;
+    private Duration originalDuration;
+    private AntiSnipePolicy antiSnipePolicy;
+    private long extensionsCount;
     private List<Bid> bids;
     private WinnerId winnerId;
 
     public AuctionAggregate() {
         this.bids = new ArrayList<>();
         this.status = AuctionStatus.CREATED;
+        this.extensionsCount = 0;
     }
 
     public AuctionAggregate(List<DomainEvent> events) {
@@ -60,6 +65,7 @@ public class AuctionAggregate extends AggregateRoot {
             command.buyNowPrice(),
             command.startTime(),
             command.endTime(),
+            command.antiSnipePolicy(),
             eventId,
             timestamp,
             sequenceNumber
@@ -131,6 +137,8 @@ public class AuctionAggregate extends AggregateRoot {
         this.buyNowPrice = event.getBuyNowPrice();
         this.startTime = event.getStartTime();
         this.endTime = event.getEndTime();
+        this.originalDuration = Duration.between(event.getStartTime(), event.getEndTime());
+        this.antiSnipePolicy = event.getAntiSnipePolicy();
         this.status = AuctionStatus.OPEN;
     }
 
@@ -143,6 +151,7 @@ public class AuctionAggregate extends AggregateRoot {
     @EventHandler
     public void apply(AuctionExtendedEvent event) {
         this.endTime = event.getNewEndTime();
+        this.extensionsCount++;
     }
 
     @EventHandler
@@ -154,6 +163,10 @@ public class AuctionAggregate extends AggregateRoot {
     // Getters for testing or external access
     public AuctionId getId() { return id; }
     public AuctionStatus getStatus() { return status; }
+    public Instant getEndTime() { return endTime; }
+    public Duration getOriginalDuration() { return originalDuration; }
+    public AntiSnipePolicy getAntiSnipePolicy() { return antiSnipePolicy; }
+    public long getExtensionsCount() { return extensionsCount; }
     public List<Bid> getBids() { return new ArrayList<>(bids); }
     public WinnerId getWinnerId() { return winnerId; }
 }

@@ -5,6 +5,7 @@ import com.auctionflow.core.domain.aggregates.AuctionAggregate;
 import com.auctionflow.core.domain.commands.PlaceBidCommand;
 import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.events.EventStore;
+import com.auctionflow.timers.AntiSnipeExtension;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.context.event.EventListener;
@@ -12,6 +13,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -21,11 +23,13 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
     private final EventStore eventStore;
     private final KafkaTemplate<String, DomainEvent> kafkaTemplate;
     private final RedissonClient redissonClient;
+    private final AntiSnipeExtension antiSnipeExtension;
 
-    public PlaceBidHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient) {
+    public PlaceBidHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient, AntiSnipeExtension antiSnipeExtension) {
         this.eventStore = eventStore;
         this.kafkaTemplate = kafkaTemplate;
         this.redissonClient = redissonClient;
+        this.antiSnipeExtension = antiSnipeExtension;
     }
 
     @Override
@@ -52,6 +56,17 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
                     for (DomainEvent event : newEvents) {
                         kafkaTemplate.send("auction-events", event.getAggregateId().toString(), event);
                     }
+                    // Check for anti-snipe extension
+                    Instant bidTime = Instant.now(); // Approximate, since it's after handling
+                    antiSnipeExtension.applyExtensionIfNeeded(
+                        aggregate.getId(),
+                        bidTime,
+                        aggregate.getEndTime(),
+                        aggregate.getOriginalDuration(),
+                        aggregate.getAntiSnipePolicy(),
+                        aggregate.getExtensionsCount()
+                    );
+
                     aggregate.clearDomainEvents();
                     break;
                 } catch (OptimisticLockException e) {

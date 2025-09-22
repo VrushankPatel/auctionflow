@@ -1,0 +1,107 @@
+package com.auctionflow.timers;
+
+import com.auctionflow.core.domain.aggregates.AuctionAggregate;
+import com.auctionflow.core.domain.commands.CloseAuctionCommand;
+import com.auctionflow.core.domain.events.DomainEvent;
+import com.auctionflow.core.domain.valueobjects.AuctionId;
+import com.auctionflow.core.domain.valueobjects.AuctionStatus;
+import com.auctionflow.events.EventStore;
+import com.auctionflow.events.publisher.KafkaEventPublisher;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Task to close an auction when its end time is reached.
+ * Loads auction state, checks if still open, determines winner, emits AuctionClosedEvent.
+ * Idempotent with database state check and distributed lock to prevent duplicate execution.
+ */
+public class AuctionCloseTask implements TimerTask {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuctionCloseTask.class);
+
+    private final AuctionId auctionId;
+    private final EventStore eventStore;
+    private final KafkaEventPublisher eventPublisher;
+    private final RedissonClient redissonClient;
+    private final UUID jobId;
+    private final DurableScheduler durableScheduler;
+
+    public AuctionCloseTask(AuctionId auctionId, EventStore eventStore, KafkaEventPublisher eventPublisher, RedissonClient redissonClient, UUID jobId, DurableScheduler durableScheduler) {
+        this.auctionId = auctionId;
+        this.eventStore = eventStore;
+        this.eventPublisher = eventPublisher;
+        this.redissonClient = redissonClient;
+        this.jobId = jobId;
+        this.durableScheduler = durableScheduler;
+    }
+
+    @Override
+    public void execute() {
+        String lockKey = "auction-close:" + auctionId.value();
+        RLock lock = redissonClient.getLock(lockKey);
+        try {
+            if (!lock.tryLock(10, 30, TimeUnit.SECONDS)) {
+                logger.warn("Could not acquire lock for closing auction {}", auctionId);
+                return;
+            }
+
+            // Load auction state from event store
+            List<DomainEvent> events = eventStore.getEvents(auctionId);
+            if (events.isEmpty()) {
+                logger.warn("No events found for auction {}", auctionId);
+                return;
+            }
+
+            AuctionAggregate aggregate = new AuctionAggregate(events);
+
+            // Check if auction is still open
+            if (aggregate.getStatus() != AuctionStatus.OPEN) {
+                logger.info("Auction {} is already closed or not open, status: {}", auctionId, aggregate.getStatus());
+                return;
+            }
+
+            // Check if end time has passed
+            Instant now = Instant.now();
+            if (now.isBefore(aggregate.getEndTime())) {
+                logger.info("Auction {} end time not reached yet, endTime: {}, now: {}", auctionId, aggregate.getEndTime(), now);
+                return;
+            }
+
+            // Determine winner and close auction
+            CloseAuctionCommand command = new CloseAuctionCommand(auctionId);
+            aggregate.handle(command);
+
+            List<DomainEvent> newEvents = aggregate.getDomainEvents();
+            if (!newEvents.isEmpty()) {
+                // Save events to event store
+                eventStore.save(newEvents, aggregate.getExpectedVersion());
+
+                // Publish events
+                for (DomainEvent event : newEvents) {
+                    eventPublisher.publish(event);
+                }
+
+                logger.info("Successfully closed auction {} with winner {}", auctionId, aggregate.getWinnerId());
+                durableScheduler.markJobCompleted(jobId);
+            } else {
+                logger.warn("No events generated for closing auction {}", auctionId);
+                durableScheduler.handleJobFailure(jobId);
+            }
+
+        } catch (Exception e) {
+            logger.error("Failed to close auction {}", auctionId, e);
+            durableScheduler.handleJobFailure(jobId);
+            // In a real system, might want to retry or send to DLQ
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+    }
+}

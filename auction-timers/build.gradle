@@ -4,6 +4,11 @@ plugins {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.postgresql:postgresql'
+    implementation 'io.netty:netty-transport'
+    implementation 'org.redisson:redisson-spring-boot-starter:3.17.0'
     implementation project(':auction-core')
     implementation project(':auction-common')
+    implementation project(':auction-events')
 }
