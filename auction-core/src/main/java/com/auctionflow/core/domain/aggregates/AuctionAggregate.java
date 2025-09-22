@@ -2,17 +2,11 @@ package com.auctionflow.core.domain.aggregates;
 
 import com.auctionflow.core.domain.commands.*;
 import com.auctionflow.core.domain.events.*;
-import com.auctionflow.core.domain.events.ReserveMetEvent;
-import com.auctionflow.core.domain.events.DomainEvent;
+import com.auctionflow.core.domain.validators.BidValidator;
+import com.auctionflow.core.domain.validators.ValidationResult;
 import com.auctionflow.core.domain.valueobjects.*;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
+import com.auctionflow.core.domain.valueobjects.FixedBidIncrement;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -41,6 +35,8 @@ public class AuctionAggregate extends AggregateRoot {
     private WinnerId winnerId;
     private Money currentHighestBid;
     private UUID highestBidderId;
+    private BidIncrement bidIncrement;
+    private long currentSeqNo;
 
     public AuctionAggregate() {
         this.bids = new ArrayList<>();
@@ -50,6 +46,8 @@ public class AuctionAggregate extends AggregateRoot {
         this.extensionsCount = 0;
         this.currentHighestBid = null;
         this.highestBidderId = null;
+        this.bidIncrement = new FixedBidIncrement(new Money(BigDecimal.ONE));
+        this.currentSeqNo = Long.MAX_VALUE;
     }
 
     public AuctionAggregate(List<DomainEvent> events) {
@@ -183,7 +181,7 @@ public class AuctionAggregate extends AggregateRoot {
 
     /**
      * Handles placing a bid on the auction.
-     * Validates bid amount against current highest and reserve, updates state, and emits events.
+     * Validates bid amount using BidValidator with increments, updates state with price-time priority, and emits events.
      * Optimized for high-frequency bidding with server-assigned timestamps and sequence numbers for fairness.
      * @param command the place bid command containing server timestamp and sequence number
      */
@@ -199,14 +197,14 @@ public class AuctionAggregate extends AggregateRoot {
         if (serverTs.isBefore(startTime) || serverTs.isAfter(endTime)) {
             throw new IllegalStateException("Auction is not active");
         }
-        if (currentHighestBid != null && !command.amount().isGreaterThan(currentHighestBid)) {
-            throw new IllegalStateException("Bid must be higher than current highest bid");
-        }
-        if (!command.amount().isGreaterThanOrEqual(reservePrice)) {
-            throw new IllegalStateException("Bid must meet reserve price");
+        // Use BidValidator for proper validation with increments
+        BidValidator validator = new BidValidator();
+        ValidationResult result = validator.validate(currentHighestBid, reservePrice, bidIncrement, new BidderId(command.bidderId()), command.amount());
+        if (!result.isValid()) {
+            throw new IllegalStateException(result.getErrors().get(0));
         }
         // TODO: Use object pool for Bid and event objects to achieve zero-allocation in hot paths
-        Bid bid = new Bid(command.bidderId(), command.amount(), serverTs);
+        Bid bid = new Bid(new BidderId(command.bidderId()), command.amount(), serverTs, seqNo);
         UUID eventId = UUID.randomUUID();
         long sequenceNumber = getVersion() + 1;
         BidPlacedEvent event = new BidPlacedEvent(id, command.bidderId(), command.amount(), serverTs, eventId, sequenceNumber, seqNo);
@@ -248,12 +246,10 @@ public class AuctionAggregate extends AggregateRoot {
         }
         WinnerId winner = null;
         if (auctionType == AuctionType.SEALED_BID) {
-            // For sealed bid, winner from revealed bids
+            // For sealed bid, winner from revealed bids: higher amount, then lower seqNo (earlier commit)
             winner = revealedBids.stream()
                     .max(Comparator.comparing(Bid::amount)
-                            .thenComparing(b -> commits.stream()
-                                    .filter(c -> c.getBidderId().equals(b.bidderId()))
-                                    .findFirst().map(SealedBidCommit::getSeqNo).orElse(Long.MAX_VALUE))) // tiebreaker by commit seqNo
+                            .thenComparing(Bid::seqNo))
                     .map(bid -> new WinnerId(bid.bidderId()))
                     .orElse(null);
         } else {
@@ -281,15 +277,20 @@ public class AuctionAggregate extends AggregateRoot {
         this.antiSnipePolicy = event.getAntiSnipePolicy();
         this.status = event.getAuctionType() == AuctionType.SEALED_BID ? AuctionStatus.SEALED_BIDDING : AuctionStatus.OPEN;
         this.currentHighestBid = event.getReservePrice();
+        this.bidIncrement = new FixedBidIncrement(new Money(BigDecimal.ONE));
+        this.currentSeqNo = Long.MAX_VALUE;
     }
 
     @EventHandler
     public void apply(BidPlacedEvent event) {
-        Bid bid = new Bid(event.getBidderId(), event.getAmount(), event.getTimestamp());
+        Bid bid = new Bid(new BidderId(event.getBidderId()), event.getAmount(), event.getTimestamp(), event.getSeqNo());
         this.bids.add(bid);
-        if (this.currentHighestBid == null || event.getAmount().isGreaterThan(this.currentHighestBid)) {
+        // Implement price-time priority: higher amount wins, or same amount with lower seqNo (earlier)
+        if (this.currentHighestBid == null || event.getAmount().isGreaterThan(this.currentHighestBid) ||
+            (event.getAmount().equals(this.currentHighestBid) && event.getSeqNo() < this.currentSeqNo)) {
             this.currentHighestBid = event.getAmount();
             this.highestBidderId = event.getBidderId();
+            this.currentSeqNo = event.getSeqNo();
         }
     }
 

@@ -325,12 +325,21 @@ public class AuctionController {
         Instant serverTs = Instant.now();
         long seqNo = sequenceGenerator.incrementAndGet();
         PlaceBidCommand cmd = new PlaceBidCommand(auctionId, bidderId, amount, idempotencyKey, serverTs, seqNo);
-        commandBus.send(cmd);
-        BidResponse response = new BidResponse();
-        response.setAccepted(true);
-        response.setServerTimestamp(serverTs);
-        response.setSequenceNumber(seqNo);
-        return ResponseEntity.ok(response);
+        try {
+            commandBus.send(cmd);
+            BidResponse response = new BidResponse();
+            response.setAccepted(true);
+            response.setServerTimestamp(serverTs);
+            response.setSequenceNumber(seqNo);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            // If synchronous validation fails, return rejected
+            BidResponse response = new BidResponse();
+            response.setAccepted(false);
+            response.setServerTimestamp(serverTs);
+            response.setSequenceNumber(seqNo);
+            return ResponseEntity.ok(response);
+        }
     }
 
     @PostMapping("/{id}/proxy-bid")

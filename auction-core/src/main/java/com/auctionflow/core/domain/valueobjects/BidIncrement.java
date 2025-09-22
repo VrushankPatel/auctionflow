@@ -6,7 +6,7 @@ public interface BidIncrement {
     Money nextBid(Money currentHighest);
 }
 
-class FixedBidIncrement implements BidIncrement {
+public class FixedBidIncrement implements BidIncrement {
     private final Money increment;
 
     public FixedBidIncrement(Money increment) {

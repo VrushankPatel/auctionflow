@@ -2,7 +2,7 @@ package com.auctionflow.core.domain.valueobjects;
 
 import java.time.Instant;
 
-public record Bid(BidderId bidderId, Money amount, Instant timestamp) {
+public record Bid(BidderId bidderId, Money amount, Instant timestamp, long seqNo) {
     public Bid {
         if (bidderId == null) {
             throw new IllegalArgumentException("BidderId cannot be null");
