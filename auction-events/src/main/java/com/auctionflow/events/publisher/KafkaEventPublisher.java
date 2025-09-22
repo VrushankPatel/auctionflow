@@ -70,6 +70,8 @@ public class KafkaEventPublisher {
             return BID_EVENTS_TOPIC;
         } else if (event instanceof WinnerDeclaredEvent) {
             return NOTIFICATION_EVENTS_TOPIC;
+        } else if (event instanceof DisputeCreatedEvent || event instanceof DisputeResolvedEvent) {
+            return AUCTION_EVENTS_TOPIC; // Or create a new topic
         } else {
             logger.warn("Unknown event type {}, defaulting to auction-events", event.getClass().getSimpleName());
             return AUCTION_EVENTS_TOPIC;

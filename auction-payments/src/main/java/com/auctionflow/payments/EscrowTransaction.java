@@ -137,6 +137,7 @@ public class EscrowTransaction {
     public enum EscrowStatus {
         AUTHORIZED,
         INSPECTION,
+        DISPUTE,
         CAPTURED,
         CANCELLED
     }

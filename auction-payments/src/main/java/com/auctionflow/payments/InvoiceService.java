@@ -13,24 +13,23 @@ public class InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
     private final FeeScheduleRepository feeScheduleRepository;
+    private final TaxRateRepository taxRateRepository;
 
-    // Simple tax rate, configurable later
-    private static final BigDecimal TAX_RATE = BigDecimal.ZERO;
-
-    public InvoiceService(InvoiceRepository invoiceRepository, FeeScheduleRepository feeScheduleRepository) {
+    public InvoiceService(InvoiceRepository invoiceRepository, FeeScheduleRepository feeScheduleRepository, TaxRateRepository taxRateRepository) {
         this.invoiceRepository = invoiceRepository;
         this.feeScheduleRepository = feeScheduleRepository;
+        this.taxRateRepository = taxRateRepository;
     }
 
     @Transactional
-    public Invoice generateInvoice(String auctionId, String sellerId, String buyerId, BigDecimal winningBidAmount) {
+    public Invoice generateInvoice(String auctionId, String sellerId, String buyerId, BigDecimal winningBidAmount, String countryCode, String category) {
         // Check if invoice already exists
         if (invoiceRepository.findByAuctionId(auctionId).isPresent()) {
             throw new IllegalStateException("Invoice already exists for auction: " + auctionId);
         }
 
         BigDecimal platformFee = calculatePlatformFee(winningBidAmount);
-        BigDecimal taxAmount = calculateTax(winningBidAmount);
+        BigDecimal taxAmount = calculateTax(winningBidAmount, countryCode, category);
         BigDecimal netPayout = winningBidAmount.subtract(platformFee).subtract(taxAmount);
 
         Invoice invoice = new Invoice(auctionId, sellerId, buyerId, winningBidAmount, platformFee, taxAmount, netPayout);
@@ -60,7 +59,22 @@ public class InvoiceService {
         }
     }
 
-    private BigDecimal calculateTax(BigDecimal amount) {
-        return amount.multiply(TAX_RATE).setScale(2, RoundingMode.HALF_UP);
+    private BigDecimal calculateTax(BigDecimal amount, String countryCode, String category) {
+        BigDecimal rate = BigDecimal.ZERO;
+
+        // Find the most specific tax rate
+        Optional<TaxRate> taxRate = taxRateRepository.findByCountryCodeAndStateCodeAndCategoryAndActiveTrue(countryCode, null, category);
+        if (taxRate.isEmpty()) {
+            taxRate = taxRateRepository.findByCountryCodeAndCategoryAndActiveTrue(countryCode, category);
+        }
+        if (taxRate.isEmpty()) {
+            taxRate = taxRateRepository.findByCountryCodeAndActiveTrue(countryCode);
+        }
+
+        if (taxRate.isPresent()) {
+            rate = taxRate.get().getRate();
+        }
+
+        return amount.multiply(rate).setScale(2, RoundingMode.HALF_UP);
     }
 }

@@ -49,6 +49,16 @@ public class SuspiciousActivityService {
         redisTemplate.expire(key, 3600, TimeUnit.SECONDS); // Expire after 1 hour
     }
 
+    public void recordSuspiciousActivity(Long userId, String activityType, String details) {
+        publishSuspiciousActivity(
+            "unknown", // IP address not available in this context
+            "unknown", // User agent not available
+            activityType,
+            "Suspicious activity detected for user " + userId,
+            Map.of("userId", userId.toString(), "details", details)
+        );
+    }
+
     private void publishSuspiciousActivity(String ipAddress, String userAgent, String activityType, String description, Map<String, Object> details) {
         SuspiciousActivityEvent event = new SuspiciousActivityEvent(
             java.util.UUID.randomUUID(),

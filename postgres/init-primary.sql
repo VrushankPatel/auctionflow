@@ -272,6 +272,51 @@ CREATE INDEX idx_auction_templates_name_description ON auction_templates USING g
 -- Insert default platform fee: 5%
 INSERT INTO fee_schedules (fee_type, calculation_type, value, active) VALUES ('PLATFORM_FEE', 'PERCENTAGE', 0.05, true);
 
+-- Prohibited categories table
+CREATE TABLE prohibited_categories (
+    id BIGSERIAL PRIMARY KEY,
+    category_id VARCHAR(255) NOT NULL UNIQUE,
+    reason VARCHAR(255),
+    active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- Insert some prohibited categories
+INSERT INTO prohibited_categories (category_id, reason) VALUES
+('weapons', 'Firearms and weapons'),
+('drugs', 'Illegal substances'),
+('stolen_goods', 'Stolen property'),
+('counterfeit', 'Counterfeit items');
+
+-- Brands for verification
+CREATE TABLE verified_brands (
+    id BIGSERIAL PRIMARY KEY,
+    brand_name VARCHAR(255) NOT NULL UNIQUE,
+    active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- Insert some brands
+INSERT INTO verified_brands (brand_name) VALUES
+('Nike'), ('Apple'), ('Samsung'), ('Louis Vuitton');
+
+-- Tax rates table
+CREATE TABLE tax_rates (
+    id BIGSERIAL PRIMARY KEY,
+    country_code VARCHAR(3) NOT NULL,
+    state_code VARCHAR(10),
+    category VARCHAR(255),
+    rate DECIMAL(5,4) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- Insert some tax rates
+INSERT INTO tax_rates (country_code, rate) VALUES
+('US', 0.08), -- 8% US sales tax
+('CA', 0.12), -- 12% Canada GST
+('GB', 0.20); -- 20% UK VAT
+
 -- Audit trail table for comprehensive logging
 CREATE TABLE audit_trail (
     id BIGSERIAL PRIMARY KEY,
@@ -288,6 +333,36 @@ CREATE TABLE audit_trail (
 CREATE INDEX idx_audit_trail_user_id ON audit_trail (user_id);
 CREATE INDEX idx_audit_trail_timestamp ON audit_trail (timestamp);
 CREATE INDEX idx_audit_trail_entity_type_id ON audit_trail (entity_type, entity_id);
+
+-- Disputes table for handling auction disputes
+CREATE TABLE disputes (
+    id BIGSERIAL PRIMARY KEY,
+    auction_id VARCHAR(255) NOT NULL,
+    initiator_id VARCHAR(255) NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    description TEXT,
+    status VARCHAR(50) NOT NULL DEFAULT 'OPEN',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    resolved_at TIMESTAMP WITH TIME ZONE,
+    resolver_id VARCHAR(255),
+    resolution_notes TEXT
+);
+
+CREATE INDEX idx_disputes_auction_id ON disputes (auction_id);
+CREATE INDEX idx_disputes_initiator_id ON disputes (initiator_id);
+CREATE INDEX idx_disputes_status ON disputes (status);
+
+-- Dispute evidence table
+CREATE TABLE dispute_evidence (
+    id BIGSERIAL PRIMARY KEY,
+    dispute_id BIGINT NOT NULL REFERENCES disputes(id),
+    submitted_by VARCHAR(255) NOT NULL,
+    evidence_type VARCHAR(50) NOT NULL, -- 'TEXT', 'IMAGE', 'DOCUMENT'
+    content TEXT, -- For text or file path/URL
+    submitted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_dispute_evidence_dispute_id ON dispute_evidence (dispute_id);
 
 -- Materialized views for reports
 CREATE MATERIALIZED VIEW daily_auction_stats AS
@@ -329,3 +404,44 @@ ORDER BY total_auctions DESC;
 CREATE INDEX idx_daily_auction_stats_date ON daily_auction_stats (date);
 CREATE INDEX idx_user_activity_stats_bidder_id ON user_activity_stats (bidder_id);
 CREATE INDEX idx_seller_performance_stats_seller_id ON seller_performance_stats (seller_id);
+
+-- Archive tables for cold storage
+CREATE TABLE archived_auctions (
+    id VARCHAR(255) PRIMARY KEY,
+    item_id VARCHAR(255),
+    status VARCHAR(50),
+    start_ts TIMESTAMP WITH TIME ZONE,
+    end_ts TIMESTAMP WITH TIME ZONE,
+    encrypted_reserve_price TEXT,
+    buy_now_price DECIMAL(10,2),
+    hidden_reserve BOOLEAN,
+    archived_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE archived_bids (
+    id BIGSERIAL PRIMARY KEY,
+    auction_id VARCHAR(255),
+    bidder_id VARCHAR(255),
+    amount DECIMAL(10,2),
+    server_ts TIMESTAMP WITH TIME ZONE,
+    seq_no BIGINT,
+    accepted BOOLEAN,
+    archived_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE archived_events (
+    id BIGSERIAL PRIMARY KEY,
+    aggregate_id VARCHAR(255) NOT NULL,
+    aggregate_type VARCHAR(255) NOT NULL,
+    event_type VARCHAR(255) NOT NULL,
+    compressed_event_data BYTEA NOT NULL, -- GZIP compressed JSON
+    event_metadata BYTEA, -- GZIP compressed JSON
+    sequence_number BIGINT NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+    archived_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- Indexes for archive tables
+CREATE INDEX idx_archived_auctions_end_ts ON archived_auctions (end_ts);
+CREATE INDEX idx_archived_bids_auction_id ON archived_bids (auction_id);
+CREATE INDEX idx_archived_events_aggregate_id ON archived_events (aggregate_id, sequence_number);

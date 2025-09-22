@@ -13,6 +13,8 @@ public class Item {
     private String title;
     private String description;
     private String categoryId;
+    private String brand;
+    private String serialNumber;
 
     // getters and setters
     public String getId() { return id; }
@@ -29,4 +31,10 @@ public class Item {
 
     public String getCategoryId() { return categoryId; }
     public void setCategoryId(String categoryId) { this.categoryId = categoryId; }
+
+    public String getBrand() { return brand; }
+    public void setBrand(String brand) { this.brand = brand; }
+
+    public String getSerialNumber() { return serialNumber; }
+    public void setSerialNumber(String serialNumber) { this.serialNumber = serialNumber; }
 }

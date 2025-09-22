@@ -41,6 +41,10 @@ public class AuditService {
         logEvent(adminId, "ADMIN_ACTION", ipAddress, null, details, null, null);
     }
 
+    public void logDataAccess(Long userId, String action, String entityType, Long entityId, String ipAddress, String endpoint) {
+        logEvent(userId, action, ipAddress, endpoint, "Data access", entityType, entityId);
+    }
+
     @Scheduled(cron = "0 0 2 * * ?") // Daily at 2 AM
     @Transactional
     public void cleanupOldAuditLogs() {

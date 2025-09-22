@@ -15,4 +15,6 @@ public interface EventRepository extends JpaRepository<EventEntity, Long> {
 
     @Query("SELECT MAX(e.sequenceNumber) FROM EventEntity e WHERE e.aggregateId = :aggregateId")
     Long findMaxSequenceNumberByAggregateId(@Param("aggregateId") String aggregateId);
+
+    void deleteByAggregateId(String aggregateId);
 }

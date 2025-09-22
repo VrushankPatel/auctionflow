@@ -1,10 +1,12 @@
 package com.auctionflow.api.entities;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.Where;
 import java.time.Instant;
 
 @Entity
 @Table(name = "users")
+@Where(clause = "deleted_at IS NULL")
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,6 +33,17 @@ public class User {
 
     @Column(nullable = false)
     private Instant createdAt;
+
+    @Column(nullable = false)
+    private boolean consentGiven = false;
+
+    private Instant consentDate;
+
+    @Column(nullable = false)
+    private boolean dataProcessingConsent = false;
+
+    private Instant deletedAt;
+    private Long deletedBy;
 
     public enum Role {
         BUYER, SELLER, ADMIN
@@ -65,4 +78,19 @@ public class User {
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public boolean isConsentGiven() { return consentGiven; }
+    public void setConsentGiven(boolean consentGiven) { this.consentGiven = consentGiven; }
+
+    public Instant getConsentDate() { return consentDate; }
+    public void setConsentDate(Instant consentDate) { this.consentDate = consentDate; }
+
+    public boolean isDataProcessingConsent() { return dataProcessingConsent; }
+    public void setDataProcessingConsent(boolean dataProcessingConsent) { this.dataProcessingConsent = dataProcessingConsent; }
+
+    public Instant getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
+
+    public Long getDeletedBy() { return deletedBy; }
+    public void setDeletedBy(Long deletedBy) { this.deletedBy = deletedBy; }
 }

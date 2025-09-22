@@ -67,13 +67,21 @@ management:
       prometheus:
         enabled: true
 
-otel:
-  service:
-    name: auction-api
-  traces:
-    exporter: jaeger
-    sampler: parentbased_always_on
-    sampler.arg: 0.1
-  exporter:
-    jaeger:
-      endpoint: http://localhost:14268/api/traces
+ otel:
+   service:
+     name: auction-api
+   traces:
+     exporter: jaeger
+     sampler: parentbased_always_on
+     sampler.arg: 0.1
+   exporter:
+     jaeger:
+       endpoint: http://localhost:14268/api/traces
+
+gdpr:
+  retention:
+    softDeleteDays: 30
+  consents:
+    types:
+      - general
+      - dataProcessing

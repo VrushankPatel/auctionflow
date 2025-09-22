@@ -1,14 +1,19 @@
 package com.auctionflow.api;
 
 import com.auctionflow.api.dtos.*;
+import com.auctionflow.api.entities.Item;
+import com.auctionflow.api.entities.User;
 import com.auctionflow.api.queryhandlers.GetAuctionDetailsQueryHandler;
 import com.auctionflow.api.queryhandlers.GetBidHistoryQueryHandler;
 import com.auctionflow.api.queryhandlers.ListActiveAuctionsQueryHandler;
 import com.auctionflow.api.queries.GetAuctionDetailsQuery;
 import com.auctionflow.api.queries.GetBidHistoryQuery;
 import com.auctionflow.api.queries.ListActiveAuctionsQuery;
+import com.auctionflow.api.repositories.ItemRepository;
+import com.auctionflow.api.services.ItemValidationService;
 import com.auctionflow.api.services.ProxyBidService;
 import com.auctionflow.api.services.SuspiciousActivityService;
+import com.auctionflow.api.services.UserService;
 import com.auctionflow.core.domain.commands.*;
 import com.auctionflow.core.domain.commands.MakeOfferCommand;
 import com.auctionflow.core.domain.valueobjects.AntiSnipePolicy;
@@ -56,19 +61,28 @@ public class AuctionController {
     private final GetBidHistoryQueryHandler bidHistoryHandler;
     private final SuspiciousActivityService suspiciousActivityService;
     private final ProxyBidService proxyBidService;
+    private final UserService userService;
+    private final ItemValidationService itemValidationService;
+    private final ItemRepository itemRepository;
 
     public AuctionController(CommandBus commandBus,
                               ListActiveAuctionsQueryHandler listHandler,
                               GetAuctionDetailsQueryHandler detailsHandler,
                               GetBidHistoryQueryHandler bidHistoryHandler,
                               SuspiciousActivityService suspiciousActivityService,
-                              ProxyBidService proxyBidService) {
+                              ProxyBidService proxyBidService,
+                              UserService userService,
+                              ItemValidationService itemValidationService,
+                              ItemRepository itemRepository) {
         this.commandBus = commandBus;
         this.listHandler = listHandler;
         this.detailsHandler = detailsHandler;
         this.bidHistoryHandler = bidHistoryHandler;
         this.suspiciousActivityService = suspiciousActivityService;
         this.proxyBidService = proxyBidService;
+        this.userService = userService;
+        this.itemValidationService = itemValidationService;
+        this.itemRepository = itemRepository;
     }
 
     @PostMapping
@@ -106,6 +120,23 @@ public class AuctionController {
             )
         )
         @Valid @RequestBody CreateAuctionRequest request) {
+        // Check seller verification
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userService.getUserByEmail(email);
+        if (user == null || !userService.isKycVerified(user.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build(); // Or bad request with message
+        }
+
+        // Get item and validate
+        Item item = itemRepository.findById(request.getItemId()).orElse(null);
+        if (item == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        ItemValidationService.ValidationResult validation = itemValidationService.validateItem(item.getCategoryId(), item.getTitle(), item.getDescription(), item.getBrand(), item.getSerialNumber());
+        if (!validation.isValid()) {
+            return ResponseEntity.badRequest().build(); // Or return reason
+        }
+
         ItemId itemId = new ItemId(request.getItemId());
         Money reservePrice = new Money(request.getReservePrice());
         Money buyNowPrice = new Money(request.getBuyNowPrice());

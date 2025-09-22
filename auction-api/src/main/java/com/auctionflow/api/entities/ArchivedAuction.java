@@ -1,14 +1,12 @@
 package com.auctionflow.api.entities;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.Where;
 import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "auctions")
-@Where(clause = "deleted_at IS NULL")
-public class Auction {
+@Table(name = "archived_auctions")
+public class ArchivedAuction {
     @Id
     private String id;
     private String itemId;
@@ -18,8 +16,7 @@ public class Auction {
     private String encryptedReservePrice;
     private BigDecimal buyNowPrice;
     private boolean hiddenReserve;
-    private Instant deletedAt;
-    private Long deletedBy;
+    private Instant archivedAt;
 
     // getters and setters
     public String getId() { return id; }
@@ -46,9 +43,6 @@ public class Auction {
     public boolean isHiddenReserve() { return hiddenReserve; }
     public void setHiddenReserve(boolean hiddenReserve) { this.hiddenReserve = hiddenReserve; }
 
-    public Instant getDeletedAt() { return deletedAt; }
-    public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
-
-    public Long getDeletedBy() { return deletedBy; }
-    public void setDeletedBy(Long deletedBy) { this.deletedBy = deletedBy; }
+    public Instant getArchivedAt() { return archivedAt; }
+    public void setArchivedAt(Instant archivedAt) { this.archivedAt = archivedAt; }
 }

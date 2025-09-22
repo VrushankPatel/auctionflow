@@ -93,4 +93,46 @@ public class EscrowService {
 
         escrowRepository.save(escrow);
     }
+
+    /**
+     * Puts the escrow in dispute, holding funds until resolution.
+     */
+    @Transactional
+    public void disputeEscrow(String auctionId) {
+        EscrowTransaction escrow = escrowRepository.findByAuctionId(auctionId)
+                .orElseThrow(() -> new IllegalArgumentException("Escrow not found for auction: " + auctionId));
+
+        if (escrow.getStatus() != EscrowTransaction.EscrowStatus.INSPECTION) {
+            throw new IllegalStateException("Escrow must be in inspection to dispute");
+        }
+
+        escrow.setStatus(EscrowTransaction.EscrowStatus.DISPUTE);
+
+        escrowRepository.save(escrow);
+    }
+
+    /**
+     * Resolves the dispute by capturing or cancelling the escrow.
+     */
+    @Transactional
+    public void resolveDispute(String auctionId, boolean capture) {
+        EscrowTransaction escrow = escrowRepository.findByAuctionId(auctionId)
+                .orElseThrow(() -> new IllegalArgumentException("Escrow not found for auction: " + auctionId));
+
+        if (escrow.getStatus() != EscrowTransaction.EscrowStatus.DISPUTE) {
+            throw new IllegalStateException("Escrow must be in dispute to resolve");
+        }
+
+        if (capture) {
+            // Capture payment
+            String captureId = paymentGatewayService.capturePayment(PAYMENT_PROVIDER, escrow.getAuthorizationId(), escrow.getAmount());
+            escrow.setCaptureId(captureId);
+            escrow.setStatus(EscrowTransaction.EscrowStatus.CAPTURED);
+        } else {
+            // Cancel/refund
+            escrow.setStatus(EscrowTransaction.EscrowStatus.CANCELLED);
+        }
+
+        escrowRepository.save(escrow);
+    }
 }

@@ -1,14 +1,12 @@
 package com.auctionflow.api.entities;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.Where;
 import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
-@Table(name = "bids")
-@Where(clause = "deleted_at IS NULL")
-public class Bid {
+@Table(name = "archived_bids")
+public class ArchivedBid {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -18,8 +16,7 @@ public class Bid {
     private Instant serverTs;
     private Long seqNo;
     private Boolean accepted;
-    private Instant deletedAt;
-    private Long deletedBy;
+    private Instant archivedAt;
 
     // getters and setters
     public Long getId() { return id; }
@@ -43,9 +40,6 @@ public class Bid {
     public Boolean getAccepted() { return accepted; }
     public void setAccepted(Boolean accepted) { this.accepted = accepted; }
 
-    public Instant getDeletedAt() { return deletedAt; }
-    public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
-
-    public Long getDeletedBy() { return deletedBy; }
-    public void setDeletedBy(Long deletedBy) { this.deletedBy = deletedBy; }
+    public Instant getArchivedAt() { return archivedAt; }
+    public void setArchivedAt(Instant archivedAt) { this.archivedAt = archivedAt; }
 }
