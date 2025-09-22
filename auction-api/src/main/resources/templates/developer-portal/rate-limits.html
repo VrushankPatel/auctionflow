@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Rate Limits Dashboard - Auction Flow</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/developer-portal">Auction Flow Developer Portal</a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/developer-portal/api-docs">API Documentation</a>
+                <a class="nav-link active" href="/developer-portal/rate-limits">Rate Limits</a>
+                <a class="nav-link" href="/developer-portal/webhooks">Webhooks</a>
+                <a class="nav-link" href="/developer-portal/code-examples">Code Examples</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1>Rate Limits Dashboard</h1>
+        <p class="lead">Monitor your API usage and current rate limit status.</p>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        Bid Placement Limits
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">5 bids/second (burst: 20)</h5>
+                        <p class="card-text">Current usage: <span id="bid-usage">0</span>/5 per second</p>
+                        <div class="progress">
+                            <div class="progress-bar" id="bid-progress" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        General API Limits
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">100 requests/minute</h5>
+                        <p class="card-text">Current usage: <span id="api-usage">0</span>/100 per minute</p>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" id="api-progress" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <h3>Rate Limit Policies</h3>
+            <ul class="list-group">
+                <li class="list-group-item">Bid placements: 5/sec per account, burst up to 20</li>
+                <li class="list-group-item">IP-based limits: 1000 requests/minute</li>
+                <li class="list-group-item">Per-auction bidding: 100 bids/sec total</li>
+                <li class="list-group-item">Minimum bid interval: 100ms per account</li>
+            </ul>
+        </div>
+
+        <div class="mt-4">
+            <button class="btn btn-primary" onclick="refreshLimits()">Refresh</button>
+        </div>
+    </div>
+
+    <script>
+        function refreshLimits() {
+            // Simulate fetching rate limit data
+            fetch('/api/v1/rate-limits')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('bid-usage').textContent = data.bidUsage || 0;
+                    document.getElementById('api-usage').textContent = data.apiUsage || 0;
+                    document.getElementById('bid-progress').style.width = ((data.bidUsage / 5) * 100) + '%';
+                    document.getElementById('api-progress').style.width = ((data.apiUsage / 100) * 100) + '%';
+                })
+                .catch(error => console.error('Error fetching rate limits:', error));
+        }
+
+        // Refresh every 5 seconds
+        setInterval(refreshLimits, 5000);
+        refreshLimits(); // Initial load
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

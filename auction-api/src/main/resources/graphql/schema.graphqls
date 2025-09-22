@@ -1,0 +1,160 @@
+type Query {
+  auctions(category: String, sellerId: String, page: Int = 0, size: Int = 10): AuctionConnection!
+  auction(id: ID!): Auction
+  bids(auctionId: ID!, page: Int = 0, size: Int = 10): BidConnection!
+  user(id: ID!): User
+  users(page: Int = 0, size: Int = 10): UserConnection!
+}
+
+type Mutation {
+  createAuction(input: CreateAuctionInput!): Auction!
+  updateAuction(id: ID!, input: UpdateAuctionInput!): Auction!
+  placeBid(auctionId: ID!, input: PlaceBidInput!): Bid!
+  buyNow(auctionId: ID!, userId: ID!): Auction!
+  watchAuction(auctionId: ID!, userId: ID!): Boolean!
+  unwatchAuction(auctionId: ID!, userId: ID!): Boolean!
+  closeAuction(id: ID!): Auction!
+}
+
+type Subscription {
+  bidPlaced(auctionId: ID!): Bid!
+  auctionClosed(auctionId: ID!): Auction!
+  auctionExtended(auctionId: ID!): Auction!
+}
+
+type Auction {
+  id: ID!
+  item: Item!
+  seller: User!
+  type: AuctionType!
+  status: AuctionStatus!
+  startTime: DateTime!
+  endTime: DateTime!
+  reservePrice: Money
+  buyNowPrice: Money
+  currentHighestBid: Bid
+  bids(page: Int = 0, size: Int = 10): BidConnection!
+  watchers: [User!]!
+  createdAt: DateTime!
+}
+
+type Bid {
+  id: ID!
+  auction: Auction!
+  bidder: User!
+  amount: Money!
+  serverTimestamp: DateTime!
+  sequenceNumber: Long!
+  accepted: Boolean!
+}
+
+type User {
+  id: ID!
+  email: String!
+  displayName: String!
+  role: UserRole!
+  kycStatus: KycStatus!
+  auctions(page: Int = 0, size: Int = 10): AuctionConnection!
+  bids(page: Int = 0, size: Int = 10): BidConnection!
+  createdAt: DateTime!
+}
+
+type Item {
+  id: ID!
+  title: String!
+  description: String!
+  category: String!
+  images: [String!]!
+  metadata: String
+}
+
+type AuctionConnection {
+  edges: [AuctionEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AuctionEdge {
+  node: Auction!
+  cursor: String!
+}
+
+type BidConnection {
+  edges: [BidEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type BidEdge {
+  node: Bid!
+  cursor: String!
+}
+
+type UserConnection {
+  edges: [UserEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type UserEdge {
+  node: User!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+input CreateAuctionInput {
+  itemId: ID!
+  categoryId: String!
+  auctionType: AuctionType!
+  reservePrice: Float
+  buyNowPrice: Float
+  startTime: DateTime!
+  endTime: DateTime!
+  hiddenReserve: Boolean = false
+}
+
+input UpdateAuctionInput {
+  title: String
+  description: String
+}
+
+input PlaceBidInput {
+  amount: Float!
+  idempotencyKey: String
+}
+
+enum AuctionType {
+  ENGLISH_OPEN
+  DUTCH
+  SEALED_BID
+  RESERVE_PRICE
+  BUY_NOW
+}
+
+enum AuctionStatus {
+  PENDING
+  ACTIVE
+  CLOSED
+  CANCELLED
+}
+
+enum UserRole {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+scalar DateTime
+scalar Money

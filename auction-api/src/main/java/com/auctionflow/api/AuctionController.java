@@ -51,7 +51,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/auctions")
+@RequestMapping("/api/v1/auctions")
 @Tag(name = "Auctions", description = "Auction management endpoints")
 public class AuctionController {
 
@@ -104,19 +104,37 @@ public class AuctionController {
             content = @Content(
                 mediaType = "application/json",
                 schema = @Schema(implementation = CreateAuctionRequest.class),
-                 examples = @ExampleObject(
-                      value = """
-                      {
-                        "itemId": "123e4567-e89b-12d3-a456-426614174000",
-                        "categoryId": "electronics",
-                        "auctionType": "ENGLISH_OPEN",
-                        "reservePrice": 100.00,
-                        "buyNowPrice": 500.00,
-                        "startTime": "2023-10-01T10:00:00Z",
-                        "endTime": "2023-10-01T12:00:00Z"
-                      }
-                      """
-                 )
+                  examples = {
+                       @ExampleObject(
+                           name = "Basic Auction",
+                           value = """
+                           {
+                             "itemId": "123e4567-e89b-12d3-a456-426614174000",
+                             "categoryId": "electronics",
+                             "auctionType": "ENGLISH_OPEN",
+                             "reservePrice": 100.00,
+                             "buyNowPrice": 500.00,
+                             "startTime": "2023-10-01T10:00:00Z",
+                             "endTime": "2023-10-01T12:00:00Z"
+                           }
+                           """
+                       ),
+                       @ExampleObject(
+                           name = "Reserve Auction",
+                           value = """
+                           {
+                             "itemId": "123e4567-e89b-12d3-a456-426614174000",
+                             "categoryId": "art",
+                             "auctionType": "ENGLISH_OPEN",
+                             "reservePrice": 500.00,
+                             "buyNowPrice": null,
+                             "startTime": "2023-10-01T10:00:00Z",
+                             "endTime": "2023-10-01T12:00:00Z",
+                             "hiddenReserve": true
+                           }
+                           """
+                       )
+                   }
             )
         )
         @Valid @RequestBody CreateAuctionRequest request) {
