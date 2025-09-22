@@ -133,3 +133,96 @@ CREATE TABLE scheduled_jobs (
 CREATE INDEX idx_scheduled_jobs_execute_at_status ON scheduled_jobs (execute_at, status);
 CREATE INDEX idx_scheduled_jobs_lease_until ON scheduled_jobs (lease_until);
 CREATE INDEX idx_scheduled_jobs_auction_id ON scheduled_jobs (auction_id);
+
+-- Escrow transactions table for tracking escrow states
+CREATE TABLE escrow_transactions (
+    id BIGSERIAL PRIMARY KEY,
+    auction_id VARCHAR(255) NOT NULL,
+    winner_id VARCHAR(255) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'AUTHORIZED',
+    authorization_id VARCHAR(255),
+    capture_id VARCHAR(255),
+    inspection_end_ts TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_escrow_transactions_auction_id ON escrow_transactions (auction_id);
+CREATE INDEX idx_escrow_transactions_status ON escrow_transactions (status);
+CREATE INDEX idx_escrow_transactions_inspection_end_ts ON escrow_transactions (inspection_end_ts);
+
+-- Payments table
+CREATE TABLE payments (
+    id BIGSERIAL PRIMARY KEY,
+    auction_id VARCHAR(255) NOT NULL,
+    payer_id VARCHAR(255) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    provider_ref VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_payments_auction_id ON payments (auction_id);
+CREATE INDEX idx_payments_payer_id ON payments (payer_id);
+CREATE INDEX idx_payments_status ON payments (status);
+
+-- Webhook events table for idempotency
+CREATE TABLE webhook_events (
+    id BIGSERIAL PRIMARY KEY,
+    event_id VARCHAR(255) NOT NULL UNIQUE,
+    provider VARCHAR(255) NOT NULL,
+    event_type VARCHAR(255) NOT NULL,
+    payload TEXT,
+    processed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_webhook_events_event_id ON webhook_events (event_id);
+CREATE INDEX idx_webhook_events_provider ON webhook_events (provider);
+
+-- Fee schedules table for platform fees
+CREATE TABLE fee_schedules (
+    id BIGSERIAL PRIMARY KEY,
+    fee_type VARCHAR(50) NOT NULL,
+    calculation_type VARCHAR(50) NOT NULL,
+    value DECIMAL(10,4) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_fee_schedules_fee_type_active ON fee_schedules (fee_type, active);
+
+-- Invoices table
+CREATE TABLE invoices (
+    id BIGSERIAL PRIMARY KEY,
+    auction_id VARCHAR(255) NOT NULL,
+    seller_id VARCHAR(255) NOT NULL,
+    buyer_id VARCHAR(255),
+    total_amount DECIMAL(10,2) NOT NULL,
+    platform_fee DECIMAL(10,2),
+    tax_amount DECIMAL(10,2),
+    net_payout DECIMAL(10,2),
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_invoices_auction_id ON invoices (auction_id);
+CREATE INDEX idx_invoices_seller_id ON invoices (seller_id);
+CREATE INDEX idx_invoices_status ON invoices (status);
+
+-- Invoice items table
+CREATE TABLE invoice_items (
+    id BIGSERIAL PRIMARY KEY,
+    invoice_id BIGINT NOT NULL REFERENCES invoices(id),
+    item_type VARCHAR(50) NOT NULL,
+    description VARCHAR(255) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL
+);
+
+CREATE INDEX idx_invoice_items_invoice_id ON invoice_items (invoice_id);
+
+-- Insert default platform fee: 5%
+INSERT INTO fee_schedules (fee_type, calculation_type, value, active) VALUES ('PLATFORM_FEE', 'PERCENTAGE', 0.05, true);
