@@ -89,12 +89,11 @@ public class DutchAuctionAggregate extends AggregateRoot {
         addDomainEvent(event);
     }
 
-    public void handle(PlaceBidCommand command) {
+    public void handle(PlaceBidCommand command, Instant serverTs, long seqNo) {
         if (status != AuctionStatus.OPEN) {
             throw new IllegalStateException("Auction is not open for bidding");
         }
-        Instant now = Instant.now();
-        if (now.isBefore(startTime) || now.isAfter(endTime)) {
+        if (serverTs.isBefore(startTime) || serverTs.isAfter(endTime)) {
             throw new IllegalStateException("Auction is not active");
         }
         // In Dutch, bid means accept current price, instant purchase
@@ -103,7 +102,7 @@ public class DutchAuctionAggregate extends AggregateRoot {
         }
         UUID eventId = UUID.randomUUID();
         long sequenceNumber = getVersion() + 1;
-        BidPlacedEvent event = new BidPlacedEvent(id, command.bidderId(), currentPrice, now, eventId, sequenceNumber);
+        BidPlacedEvent event = new BidPlacedEvent(id, command.bidderId(), currentPrice, serverTs, eventId, sequenceNumber, seqNo);
         apply(event);
         addDomainEvent(event);
     }

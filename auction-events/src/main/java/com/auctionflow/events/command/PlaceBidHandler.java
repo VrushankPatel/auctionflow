@@ -32,10 +32,12 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
 
+    private final AtomicLong sequenceGenerator = new AtomicLong(0);
     private final EventStore eventStore;
     private final KafkaTemplate<String, DomainEvent> kafkaTemplate;
     private final RedissonClient redissonClient;
@@ -68,22 +70,24 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
             long backoffMs = 100;
             for (int attempt = 0; attempt <= maxRetries; attempt++) {
                 try {
-                    List<DomainEvent> events = eventStore.getEvents(command.auctionId());
-                    AuctionType type = events.stream()
-                        .filter(e -> e instanceof AuctionCreatedEvent)
-                        .map(e -> ((AuctionCreatedEvent) e).getAuctionType())
-                        .findFirst()
-                        .orElse(AuctionType.ENGLISH_OPEN); // default for old auctions
-                    AggregateRoot aggregate;
-                    if (type == AuctionType.DUTCH) {
-                        DutchAuctionAggregate dutch = new DutchAuctionAggregate(events);
-                        dutch.handle(command);
-                        aggregate = dutch;
-                    } else {
-                        AuctionAggregate english = new AuctionAggregate(events);
-                        english.handle(command);
-                        aggregate = english;
-                    }
+            Instant serverTs = Instant.now();
+            long seqNo = sequenceGenerator.incrementAndGet();
+            List<DomainEvent> events = eventStore.getEvents(command.auctionId());
+                     AuctionType type = events.stream()
+                         .filter(e -> e instanceof AuctionCreatedEvent)
+                         .map(e -> ((AuctionCreatedEvent) e).getAuctionType())
+                         .findFirst()
+                         .orElse(AuctionType.ENGLISH_OPEN); // default for old auctions
+                     AggregateRoot aggregate;
+                     if (type == AuctionType.DUTCH) {
+                         DutchAuctionAggregate dutch = new DutchAuctionAggregate(events);
+                         dutch.handle(command, serverTs, seqNo);
+                         aggregate = dutch;
+                     } else {
+                         AuctionAggregate english = new AuctionAggregate(events);
+                         english.handle(command, serverTs, seqNo);
+                         aggregate = english;
+                     }
                     List<DomainEvent> newEvents = aggregate.getDomainEvents();
                     eventStore.save(newEvents, aggregate.getExpectedVersion());
                     // Publish to Kafka
@@ -136,14 +140,11 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
     private void handleProxyBidding(com.auctionflow.core.domain.valueobjects.AuctionId auctionId, AggregateRoot aggregate) {
         // Get the current highest bid from the aggregate
         AuctionAggregate auctionAgg = (AuctionAggregate) aggregate;
-        Optional<com.auctionflow.core.domain.valueobjects.Bid> highestBidOpt = auctionAgg.getBids().stream()
-            .max(java.util.Comparator.comparing(com.auctionflow.core.domain.valueobjects.Bid::amount));
+        Money currentHighest = auctionAgg.getCurrentHighestBid();
 
-        if (highestBidOpt.isEmpty()) {
+        if (currentHighest == null) {
             return;
         }
-
-        Money currentHighest = highestBidOpt.get().amount();
 
         // Find active proxy bids that can bid higher
         List<ProxyBidEntity> proxyBids = proxyBidRepository.findActiveProxyBidsHigherThan(auctionId.value(), currentHighest.toBigDecimal());
@@ -163,7 +164,9 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
             // Place the automatic bid
             PlaceBidCommand proxyCommand = new PlaceBidCommand(auctionId, proxyBid.getUserId(), nextBidAmount, "proxy-" + proxyBid.getId());
             // Directly handle the proxy bid on the aggregate
-            auctionAgg.handle(proxyCommand);
+            Instant proxyServerTs = Instant.now();
+            long proxySeqNo = sequenceGenerator.incrementAndGet();
+            auctionAgg.handle(proxyCommand, proxyServerTs, proxySeqNo);
             List<DomainEvent> proxyEvents = auctionAgg.getDomainEvents();
             long newExpectedVersion = auctionAgg.getExpectedVersion() + proxyEvents.size();
             eventStore.save(proxyEvents, auctionAgg.getExpectedVersion());
@@ -189,14 +192,11 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
     private void handleAutomatedBidding(com.auctionflow.core.domain.valueobjects.AuctionId auctionId, AggregateRoot aggregate) {
         // Get current highest bid after proxy bidding
         AuctionAggregate auctionAgg = (AuctionAggregate) aggregate;
-        Optional<com.auctionflow.core.domain.valueobjects.Bid> highestBidOpt = auctionAgg.getBids().stream()
-            .max(java.util.Comparator.comparing(com.auctionflow.core.domain.valueobjects.Bid::amount));
+        Money currentHighest = auctionAgg.getCurrentHighestBid();
 
-        if (highestBidOpt.isEmpty()) {
+        if (currentHighest == null) {
             return;
         }
-
-        Money currentHighest = highestBidOpt.get().amount();
         Instant auctionEndTime = auctionAgg.getEndTime();
 
         // Evaluate automated strategies
@@ -210,7 +210,9 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
                 PlaceBidCommand autoCommand = new PlaceBidCommand(auctionId, bidderId, decision.getBidAmount(), "automated-" + strategyDecision.getStrategy().getId());
 
                 // Handle the automated bid
-                auctionAgg.handle(autoCommand);
+                Instant autoServerTs = Instant.now();
+                long autoSeqNo = sequenceGenerator.incrementAndGet();
+                auctionAgg.handle(autoCommand, autoServerTs, autoSeqNo);
                 List<DomainEvent> autoEvents = auctionAgg.getDomainEvents();
                 long newExpectedVersion = auctionAgg.getExpectedVersion() + autoEvents.size();
                 eventStore.save(autoEvents, auctionAgg.getExpectedVersion());

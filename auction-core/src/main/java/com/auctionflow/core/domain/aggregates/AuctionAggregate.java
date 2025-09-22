@@ -39,6 +39,8 @@ public class AuctionAggregate extends AggregateRoot {
     private List<SealedBidCommit> commits;
     private List<Bid> revealedBids;
     private WinnerId winnerId;
+    private Money currentHighestBid;
+    private UUID highestBidderId;
 
     public AuctionAggregate() {
         this.bids = new ArrayList<>();
@@ -46,6 +48,8 @@ public class AuctionAggregate extends AggregateRoot {
         this.revealedBids = new ArrayList<>();
         this.status = AuctionStatus.CREATED;
         this.extensionsCount = 0;
+        this.currentHighestBid = null;
+        this.highestBidderId = null;
     }
 
     public AuctionAggregate(List<DomainEvent> events) {
@@ -177,28 +181,33 @@ public class AuctionAggregate extends AggregateRoot {
         addDomainEvent(event);
     }
 
-    public void handle(PlaceBidCommand command) {
+    /**
+     * Handles placing a bid on the auction.
+     * Validates bid amount against current highest and reserve, updates state, and emits events.
+     * @param command the place bid command
+     * @param serverTs the server timestamp for the bid
+     * @param seqNo the global sequence number for ordering
+     */
+    public void handle(PlaceBidCommand command, Instant serverTs, long seqNo) {
         if (auctionType == AuctionType.SEALED_BID) {
             throw new IllegalStateException("Use commit bid for sealed auctions");
         }
         if (status != AuctionStatus.OPEN) {
             throw new IllegalStateException("Auction is not open for bidding");
         }
-        Instant now = Instant.now();
-        if (now.isBefore(startTime) || now.isAfter(endTime)) {
+        if (serverTs.isBefore(startTime) || serverTs.isAfter(endTime)) {
             throw new IllegalStateException("Auction is not active");
         }
-        Optional<Bid> highestBid = bids.stream().max(Comparator.comparing(Bid::amount));
-        if (highestBid.isPresent() && !command.amount().isGreaterThan(highestBid.get().amount())) {
+        if (currentHighestBid != null && !command.amount().isGreaterThan(currentHighestBid)) {
             throw new IllegalStateException("Bid must be higher than current highest bid");
         }
         if (!command.amount().isGreaterThanOrEqual(reservePrice)) {
             throw new IllegalStateException("Bid must meet reserve price");
         }
-        Bid bid = new Bid(command.bidderId(), command.amount(), now);
+        Bid bid = new Bid(command.bidderId(), command.amount(), serverTs);
         UUID eventId = UUID.randomUUID();
         long sequenceNumber = getVersion() + 1;
-        BidPlacedEvent event = new BidPlacedEvent(id, command.bidderId(), command.amount(), now, eventId, sequenceNumber);
+        BidPlacedEvent event = new BidPlacedEvent(id, command.bidderId(), command.amount(), serverTs, eventId, sequenceNumber, seqNo);
         apply(event);
         addDomainEvent(event);
 
@@ -207,7 +216,7 @@ public class AuctionAggregate extends AggregateRoot {
             reserveMet = true;
             UUID reserveEventId = UUID.randomUUID();
             long reserveSequenceNumber = getVersion() + 1;
-            ReserveMetEvent reserveEvent = new ReserveMetEvent(id, command.bidderId(), command.amount(), reserveEventId, now, reserveSequenceNumber);
+            ReserveMetEvent reserveEvent = new ReserveMetEvent(id, command.bidderId(), command.amount(), reserveEventId, serverTs, reserveSequenceNumber);
             addDomainEvent(reserveEvent);
         }
     }
@@ -246,8 +255,7 @@ public class AuctionAggregate extends AggregateRoot {
                     .map(bid -> new WinnerId(bid.bidderId()))
                     .orElse(null);
         } else {
-            Optional<Bid> highestBid = bids.stream().max(Comparator.comparing(Bid::amount));
-            winner = highestBid.map(bid -> new WinnerId(bid.bidderId())).orElse(null);
+            winner = highestBidderId != null ? new WinnerId(highestBidderId) : null;
         }
         UUID eventId = UUID.randomUUID();
         long sequenceNumber = getVersion() + 1;
@@ -270,12 +278,17 @@ public class AuctionAggregate extends AggregateRoot {
         this.originalDuration = Duration.between(event.getStartTime(), event.getEndTime());
         this.antiSnipePolicy = event.getAntiSnipePolicy();
         this.status = event.getAuctionType() == AuctionType.SEALED_BID ? AuctionStatus.SEALED_BIDDING : AuctionStatus.OPEN;
+        this.currentHighestBid = event.getReservePrice();
     }
 
     @EventHandler
     public void apply(BidPlacedEvent event) {
         Bid bid = new Bid(event.getBidderId(), event.getAmount(), event.getTimestamp());
         this.bids.add(bid);
+        if (this.currentHighestBid == null || event.getAmount().isGreaterThan(this.currentHighestBid)) {
+            this.currentHighestBid = event.getAmount();
+            this.highestBidderId = event.getBidderId();
+        }
     }
 
     @EventHandler
@@ -325,5 +338,7 @@ public class AuctionAggregate extends AggregateRoot {
     public AntiSnipePolicy getAntiSnipePolicy() { return antiSnipePolicy; }
     public long getExtensionsCount() { return extensionsCount; }
     public List<Bid> getBids() { return new ArrayList<>(bids); }
+    /** Returns the current highest bid amount, or null if no bids. */
+    public Money getCurrentHighestBid() { return currentHighestBid; }
     public WinnerId getWinnerId() { return winnerId; }
 }

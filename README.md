@@ -20,6 +20,14 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 - **Throughput**: 10,000 bids per second sustained.
 - **Concurrency**: Support for 1 million concurrent watchers.
 
+## Bid Processing Optimizations
+
+- **Efficient Highest Bid Tracking**: Maintains current highest bid in aggregate state for O(1) lookups, avoiding O(n) scans of bid history.
+- **Fair Ordering**: Assigns global sequence numbers per service instance to ensure price-time priority and deterministic ordering.
+- **Thread Safety**: Uses distributed locks per auction to prevent race conditions in concurrent bidding.
+- **Zero-Allocation Hot Paths**: Minimizes object creation in bid validation and processing paths.
+- **Asynchronous Extensions**: Proxy and automated bidding handled asynchronously to reduce transaction times.
+
 ## Modules
 
 - **auction-core**: Core business logic, domain models, and auction rules.

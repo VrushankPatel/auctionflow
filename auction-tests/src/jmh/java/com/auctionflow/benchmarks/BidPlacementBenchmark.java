@@ -46,6 +46,6 @@ public class BidPlacementBenchmark {
 
     @Benchmark
     public void benchmarkPlaceBid() {
-        auctionAggregate.handle(validBidCommand);
+        auctionAggregate.handle(validBidCommand, Instant.now(), 1L);
     }
 }

@@ -9,11 +9,13 @@ import java.util.UUID;
 public class BidPlacedEvent extends DomainEvent {
     private final UUID bidderId;
     private final Money amount;
+    private final long seqNo;
 
-    public BidPlacedEvent(AuctionId auctionId, UUID bidderId, Money amount, Instant timestamp, UUID eventId, long sequenceNumber) {
+    public BidPlacedEvent(AuctionId auctionId, UUID bidderId, Money amount, Instant timestamp, UUID eventId, long sequenceNumber, long seqNo) {
         super(auctionId, eventId, timestamp, sequenceNumber);
         this.bidderId = bidderId;
         this.amount = amount;
+        this.seqNo = seqNo;
         if (auctionId == null) {
             throw new IllegalArgumentException("AuctionId cannot be null");
         }
@@ -34,5 +36,9 @@ public class BidPlacedEvent extends DomainEvent {
 
     public Money getAmount() {
         return amount;
+    }
+
+    public long getSeqNo() {
+        return seqNo;
     }
 }
