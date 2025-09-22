@@ -89,7 +89,9 @@ public class DutchAuctionAggregate extends AggregateRoot {
         addDomainEvent(event);
     }
 
-    public void handle(PlaceBidCommand command, Instant serverTs, long seqNo) {
+    public void handle(PlaceBidCommand command) {
+        Instant serverTs = command.serverTs();
+        long seqNo = command.seqNo();
         if (status != AuctionStatus.OPEN) {
             throw new IllegalStateException("Auction is not open for bidding");
         }

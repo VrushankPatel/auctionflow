@@ -185,13 +185,13 @@ public class AuctionAggregate extends AggregateRoot {
      * Handles placing a bid on the auction.
      * Validates bid amount against current highest and reserve, updates state, and emits events.
      * @param command the place bid command
-     * @param serverTs the server timestamp for the bid
-     * @param seqNo the global sequence number for ordering
      */
-    public void handle(PlaceBidCommand command, Instant serverTs, long seqNo) {
+    public void handle(PlaceBidCommand command) {
         if (auctionType == AuctionType.SEALED_BID) {
             throw new IllegalStateException("Use commit bid for sealed auctions");
         }
+        Instant serverTs = command.serverTs();
+        long seqNo = command.seqNo();
         if (status != AuctionStatus.OPEN) {
             throw new IllegalStateException("Auction is not open for bidding");
         }

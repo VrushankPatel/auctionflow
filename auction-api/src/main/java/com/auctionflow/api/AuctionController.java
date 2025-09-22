@@ -2,6 +2,8 @@ package com.auctionflow.api;
 
 import com.auctionflow.api.dtos.*;
 import com.auctionflow.api.entities.Item;
+import java.time.Instant;
+import java.util.concurrent.atomic.AtomicLong;
 import com.auctionflow.api.entities.User;
 import com.auctionflow.api.queryhandlers.GetAuctionDetailsQueryHandler;
 import com.auctionflow.api.queryhandlers.GetBidHistoryQueryHandler;
@@ -57,6 +59,7 @@ import java.util.UUID;
 @Tag(name = "Auctions", description = "Auction management endpoints")
 public class AuctionController {
 
+    private final AtomicLong sequenceGenerator = new AtomicLong(0);
     private final CommandBus commandBus;
     private final ListActiveAuctionsQueryHandler listHandler;
     private final GetAuctionDetailsQueryHandler detailsHandler;
@@ -244,14 +247,15 @@ public class AuctionController {
         description = "Places a bid on the specified auction. Bids are processed with server timestamp and sequence number for fairness."
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Bid placed successfully"),
+        @ApiResponse(responseCode = "200", description = "Bid placed successfully",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = BidResponse.class))),
         @ApiResponse(responseCode = "400", description = "Invalid bid amount or auction not active", content = @Content),
         @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
         @ApiResponse(responseCode = "404", description = "Auction not found", content = @Content),
         @ApiResponse(responseCode = "429", description = "Rate limit exceeded", content = @Content)
     })
     @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<Void> placeBid(
+    public ResponseEntity<BidResponse> placeBid(
         @PathVariable String id,
         @io.swagger.v3.oas.annotations.parameters.RequestBody(
             description = "Bid placement request",
@@ -318,9 +322,15 @@ public class AuctionController {
         addRateLimitHeaders(response, perIpLimiter, clientIp);
         addRateLimitHeaders(response, perAuctionLimiter, id);
 
-        PlaceBidCommand cmd = new PlaceBidCommand(auctionId, bidderId, amount, idempotencyKey);
+        Instant serverTs = Instant.now();
+        long seqNo = sequenceGenerator.incrementAndGet();
+        PlaceBidCommand cmd = new PlaceBidCommand(auctionId, bidderId, amount, idempotencyKey, serverTs, seqNo);
         commandBus.send(cmd);
-        return ResponseEntity.ok().build();
+        BidResponse response = new BidResponse();
+        response.setAccepted(true);
+        response.setServerTimestamp(serverTs);
+        response.setSequenceNumber(seqNo);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/proxy-bid")
