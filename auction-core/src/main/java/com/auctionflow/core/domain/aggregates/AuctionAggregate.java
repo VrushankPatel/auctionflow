@@ -1,7 +1,9 @@
 package com.auctionflow.core.domain.aggregates;
 
+import com.auctionflow.core.domain.BidQueue;
 import com.auctionflow.core.domain.commands.*;
 import com.auctionflow.core.domain.events.*;
+import com.auctionflow.core.domain.utils.ObjectPool;
 import com.auctionflow.core.domain.validators.BidValidator;
 import com.auctionflow.core.domain.validators.ValidationResult;
 import com.auctionflow.core.domain.valueobjects.*;
@@ -37,6 +39,7 @@ public class AuctionAggregate extends AggregateRoot {
     private UUID highestBidderId;
     private BidIncrement bidIncrement;
     private long currentSeqNo;
+    private final BidQueue bidQueue = new BidQueue();
 
     public AuctionAggregate() {
         this.bids = new ArrayList<>();
@@ -203,21 +206,33 @@ public class AuctionAggregate extends AggregateRoot {
         if (!result.isValid()) {
             throw new IllegalStateException(result.getErrors().get(0));
         }
-        // TODO: Use object pool for Bid and event objects to achieve zero-allocation in hot paths
+        // Use bid queue for efficient processing and ordering
         Bid bid = new Bid(new BidderId(command.bidderId()), command.amount(), serverTs, seqNo);
-        UUID eventId = UUID.randomUUID();
-        long sequenceNumber = getVersion() + 1;
-        BidPlacedEvent event = new BidPlacedEvent(id, command.bidderId(), command.amount(), serverTs, eventId, sequenceNumber, seqNo);
-        apply(event);
-        addDomainEvent(event);
+        bidQueue.addBid(bid);
+        processQueuedBids();
+    }
 
-        // Check if reserve is met for the first time
-        if (!reserveMet && command.amount().isGreaterThanOrEqual(reservePrice)) {
-            reserveMet = true;
-            UUID reserveEventId = UUID.randomUUID();
-            long reserveSequenceNumber = getVersion() + 1;
-            ReserveMetEvent reserveEvent = new ReserveMetEvent(id, command.bidderId(), command.amount(), reserveEventId, serverTs, reserveSequenceNumber);
-            addDomainEvent(reserveEvent);
+    /**
+     * Processes queued bids in price-time priority order.
+     * Emits BidPlacedEvent for each bid and checks for reserve met.
+     */
+    private void processQueuedBids() {
+        while (!bidQueue.isEmpty()) {
+            Bid bid = bidQueue.pollHighestBid();
+            UUID eventId = UUID.randomUUID();
+            long sequenceNumber = getVersion() + 1;
+            BidPlacedEvent event = new BidPlacedEvent(id, bid.bidderId().id(), bid.amount(), bid.timestamp(), eventId, sequenceNumber, bid.seqNo());
+            apply(event);
+            addDomainEvent(event);
+
+            // Check if reserve is met for the first time
+            if (!reserveMet && bid.amount().isGreaterThanOrEqual(reservePrice)) {
+                reserveMet = true;
+                UUID reserveEventId = UUID.randomUUID();
+                long reserveSequenceNumber = getVersion() + 1;
+                ReserveMetEvent reserveEvent = new ReserveMetEvent(id, bid.bidderId().id(), bid.amount(), reserveEventId, bid.timestamp(), reserveSequenceNumber);
+                addDomainEvent(reserveEvent);
+            }
         }
     }
 
@@ -285,13 +300,27 @@ public class AuctionAggregate extends AggregateRoot {
     public void apply(BidPlacedEvent event) {
         Bid bid = new Bid(new BidderId(event.getBidderId()), event.getAmount(), event.getTimestamp(), event.getSeqNo());
         this.bids.add(bid);
-        // Implement price-time priority: higher amount wins, or same amount with lower seqNo (earlier)
-        if (this.currentHighestBid == null || event.getAmount().isGreaterThan(this.currentHighestBid) ||
-            (event.getAmount().equals(this.currentHighestBid) && event.getSeqNo() < this.currentSeqNo)) {
+        // Price-time priority: higher bid amount takes precedence.
+        // For equal amounts, lower sequence number (earlier arrival) wins.
+        // This ensures fairness and determinism in high-frequency bidding.
+        if (isHigherPriorityBid(event)) {
             this.currentHighestBid = event.getAmount();
             this.highestBidderId = event.getBidderId();
             this.currentSeqNo = event.getSeqNo();
         }
+    }
+
+    /**
+     * Determines if the incoming bid has higher priority than the current highest.
+     * @param event the bid event
+     * @return true if this bid should become the new highest
+     */
+    private boolean isHigherPriorityBid(BidPlacedEvent event) {
+        if (this.currentHighestBid == null) {
+            return true;
+        }
+        return event.getAmount().isGreaterThan(this.currentHighestBid) ||
+               (event.getAmount().equals(this.currentHighestBid) && event.getSeqNo() < this.currentSeqNo);
     }
 
     @EventHandler
