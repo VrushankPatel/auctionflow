@@ -56,7 +56,7 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 
 ## API Documentation
 
-API documentation is available at [https://api.auctionflow.com/docs](https://api.auctionflow.com/docs) (placeholder).
+API documentation is available at [https://api.auctionflow.com/docs](https://api.auctionflow.com/docs)
 
 ## Contributing
 

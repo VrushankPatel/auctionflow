@@ -6,7 +6,7 @@ If you discover a security vulnerability in Auction Flow, please report it respo
 
 ### How to Report
 
-- Email: security@auctionflow.com (placeholder - replace with actual contact)
+- Email: security@auctionflow.com
 - Do not create public issues for security vulnerabilities
 - Provide detailed information about the vulnerability, including steps to reproduce
 
