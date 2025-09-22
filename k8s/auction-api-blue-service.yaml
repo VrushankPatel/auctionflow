@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: auction-api-blue-service
+spec:
+  selector:
+    app: auction-api
+    version: blue
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP

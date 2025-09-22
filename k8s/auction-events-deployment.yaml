@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auction-events
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auction-events
+  template:
+    metadata:
+      labels:
+        app: auction-events
+    spec:
+      containers:
+      - name: auction-events
+        image: auctionflow/auction-events:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_CONFIG_LOCATION
+          value: "file:/app/config/application.yml"
+        envFrom:
+        - secretRef:
+            name: auction-events-secret
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+      volumes:
+      - name: config-volume
+        configMap:
+          name: auction-events-config

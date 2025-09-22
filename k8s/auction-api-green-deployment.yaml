@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auction-api-green
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auction-api
+      version: green
+  template:
+    metadata:
+      labels:
+        app: auction-api
+        version: green
+    spec:
+      containers:
+      - name: auction-api
+        image: auctionflow/auction-api:latest
+        ports:
+        - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        env:
+        - name: SPRING_CONFIG_LOCATION
+          value: "file:/app/config/application.yml"
+        envFrom:
+        - secretRef:
+            name: auction-api-secret
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+      volumes:
+      - name: config-volume
+        configMap:
+          name: auction-api-config

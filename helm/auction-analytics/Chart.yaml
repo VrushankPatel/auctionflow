@@ -1,0 +1,19 @@
+apiVersion: v2
+name: auction-analytics
+description: Auction API service for Auction Flow
+type: application
+version: 0.1.0
+appVersion: "latest"
+dependencies:
+  - name: postgresql
+    version: "12.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+  - name: redis
+    version: "17.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
+  - name: kafka
+    version: "20.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: kafka.enabled

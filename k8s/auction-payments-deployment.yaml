@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auction-payments
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auction-payments
+  template:
+    metadata:
+      labels:
+        app: auction-payments
+    spec:
+      containers:
+      - name: auction-payments
+        image: auctionflow/auction-payments:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_CONFIG_LOCATION
+          value: "file:/app/config/application.yml"
+        envFrom:
+        - secretRef:
+            name: auction-payments-secret
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+      volumes:
+      - name: config-volume
+        configMap:
+          name: auction-payments-config

@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "auction-api.fullname" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "auction-api.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "auction-api.name" . }}
+    spec:
+      containers:
+      - name: {{ include "auction-api.name" . }}
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_CONFIG_LOCATION
+          value: "file:/app/config/application.yml"
+        envFrom:
+        - secretRef:
+            name: {{ include "auction-api.fullname" . }}-secret
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+      volumes:
+      - name: config-volume
+        configMap:
+          name: {{ include "auction-api.fullname" . }}-config

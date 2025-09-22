@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auction-analytics-config
+data:
+  application.yml: |
+    spring:
+      kafka:
+        consumer:
+          bootstrap-servers: localhost:9092
+          group-id: analytics-group
+          auto-offset-reset: earliest
+          key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+          value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+          properties:
+            spring.json.trusted.packages: "com.auctionflow.core.domain.events"
+      redis:
+        host: localhost
+        port: 6379
+
+    ml:
+      service:
+        url: http://localhost:5000  # Python ML service URL
+
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,prometheus
+      endpoint:
+        health:
+          probes:
+            enabled: true
+          show-details: when_authorized
+      health:
+        readiness-state:
+          enabled: true
+        liveness-state:
+          enabled: true
+      metrics:
+        export:
+          prometheus:
+            enabled: true
+
+    otel:
+      service:
+        name: auction-analytics
+      traces:
+        exporter: jaeger
+        sampler: parentbased_always_on
+        sampler.arg: 0.1
+      exporter:
+        jaeger:
+          endpoint: http://localhost:14268/api/traces

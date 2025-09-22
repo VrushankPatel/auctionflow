@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "auction-api.fullname" . }}-migration
+  labels:
+    {{- include "auction-api.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+       containers:
+       - name: migration
+         image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+         command: ["flyway", "migrate"]
+         env:
+         - name: FLYWAY_URL
+           valueFrom:
+             secretKeyRef:
+               name: {{ include "auction-api.fullname" . }}-secret
+               key: database-url
+         - name: FLYWAY_USER
+           valueFrom:
+             secretKeyRef:
+               name: {{ include "auction-api.fullname" . }}-secret
+               key: database-username
+         - name: FLYWAY_PASSWORD
+           valueFrom:
+             secretKeyRef:
+               name: {{ include "auction-api.fullname" . }}-secret
+               key: database-password
+         - name: FLYWAY_LOCATIONS
+           value: filesystem:/app/db/migration
+         volumeMounts:
+         - name: config-volume
+           mountPath: /app/config
+      volumes:
+      - name: config-volume
+        configMap:
+          name: {{ include "auction-api.fullname" . }}-config

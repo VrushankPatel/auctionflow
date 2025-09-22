@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: auction-api-green-service
+spec:
+  selector:
+    app: auction-api
+    version: green
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP

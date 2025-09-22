@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auction-notifications-config
+data:
+  application.yml: |
+    spring:
+      kafka:
+        bootstrap-servers: localhost:9092
+        consumer:
+          group-id: notification-service
+          auto-offset-reset: earliest
+          key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+          value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+          properties:
+            spring.json.trusted.packages: "com.auctionflow.core.domain.events"
+      redis:
+        host: localhost
+        port: 6379
+      websocket:
+        stomp:
+          broker-relay: false
+      datasource:
+        url: jdbc:postgresql://localhost:5432/auctionflow
+        username: auctionflow
+        password: ${POSTGRES_PASSWORD}
+        driver-class-name: org.postgresql.Driver
+      jpa:
+        hibernate:
+          ddl-auto: update
+        show-sql: true
+      mail:
+        host: smtp.gmail.com
+        port: 587
+        username: ${MAIL_USERNAME}
+        password: ${MAIL_PASSWORD}
+        properties:
+          mail:
+            smtp:
+              auth: true
+              starttls:
+                enable: true
+
+    firebase:
+      config:
+        path: classpath:firebase-service-account.json
+
+    apns:
+      key-id: ${APNS_KEY_ID}
+      team-id: ${APNS_TEAM_ID}
+      topic: com.auctionflow.app
+      key-path: classpath:apns-key.p8
+
+    server:
+      port: 8082
+
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health
+      endpoint:
+        health:
+          probes:
+            enabled: true
+          show-details: when_authorized
+      health:
+        readiness-state:
+          enabled: true
+        liveness-state:
+          enabled: true
+
+    otel:
+      service:
+        name: auction-notifications
+      traces:
+        exporter: jaeger
+        sampler: parentbased_always_on
+        sampler.arg: 0.1
+      exporter:
+        jaeger:
+          endpoint: http://localhost:14268/api/traces

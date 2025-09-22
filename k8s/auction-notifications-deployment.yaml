@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auction-notifications
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auction-notifications
+  template:
+    metadata:
+      labels:
+        app: auction-notifications
+    spec:
+      containers:
+      - name: auction-notifications
+        image: auctionflow/auction-notifications:latest
+        ports:
+        - containerPort: 8082
+        env:
+        - name: SPRING_CONFIG_LOCATION
+          value: "file:/app/config/application.yml"
+        envFrom:
+        - secretRef:
+            name: auction-notifications-secret
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+      volumes:
+      - name: config-volume
+        configMap:
+          name: auction-notifications-config

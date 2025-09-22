@@ -1,0 +1,95 @@
+# Default values for auction-api.
+replicaCount: 1
+
+# Infrastructure dependencies
+postgresql:
+  enabled: true
+redis:
+  enabled: true
+kafka:
+  enabled: true
+
+image:
+  repository: auctionflow/auction-api
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8080
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+hpa:
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+config:
+  spring:
+    security:
+      oauth2:
+        client:
+          registration:
+            google:
+              client-id: ${GOOGLE_CLIENT_ID}
+              client-secret: ${GOOGLE_CLIENT_SECRET}
+              redirect-uri: http://localhost:8080/login/oauth2/code/google
+              scope:
+                - openid
+                - email
+                - profile
+            facebook:
+              client-id: ${FACEBOOK_CLIENT_ID}
+              client-secret: ${FACEBOOK_CLIENT_SECRET}
+              redirect-uri: http://localhost:8080/login/oauth2/code/facebook
+              scope:
+                - email
+                - public_profile
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration: 86400000
+    refreshExpiration: 604800000
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health,prometheus
+    endpoint:
+      health:
+        probes:
+          enabled: true
+        show-details: when_authorized
+    health:
+      readiness-state:
+        enabled: true
+      liveness-state:
+        enabled: true
+    metrics:
+      export:
+        prometheus:
+          enabled: true
+  otel:
+    service:
+      name: auction-api
+    traces:
+      exporter: jaeger
+      sampler: parentbased_always_on
+      sampler.arg: 0.1
+    exporter:
+      jaeger:
+        endpoint: http://localhost:14268/api/traces
+
+secrets:
+  GOOGLE_CLIENT_ID: "dummy-google-client-id"
+  GOOGLE_CLIENT_SECRET: "dummy-google-client-secret"
+  FACEBOOK_CLIENT_ID: "dummy-facebook-client-id"
+  FACEBOOK_CLIENT_SECRET: "dummy-facebook-client-secret"
+  JWT_SECRET: "mySecretKeyForJWTWhichShouldBeAtLeast256BitsLong"
