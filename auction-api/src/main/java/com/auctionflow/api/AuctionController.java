@@ -14,6 +14,7 @@ import com.auctionflow.api.services.ItemValidationService;
 import com.auctionflow.api.services.ProxyBidService;
 import com.auctionflow.api.services.SuspiciousActivityService;
 import com.auctionflow.api.services.UserService;
+import com.auctionflow.common.service.FeatureFlagService;
 import com.auctionflow.core.domain.commands.*;
 import com.auctionflow.core.domain.commands.MakeOfferCommand;
 import com.auctionflow.core.domain.valueobjects.AntiSnipePolicy;
@@ -26,6 +27,7 @@ import com.auctionflow.events.command.CommandBus;
 import io.github.resilience4j.ratelimiter.RateLimiter;
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.getunleash.UnleashContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -64,6 +66,7 @@ public class AuctionController {
     private final UserService userService;
     private final ItemValidationService itemValidationService;
     private final ItemRepository itemRepository;
+    private final FeatureFlagService featureFlagService;
 
     public AuctionController(CommandBus commandBus,
                               ListActiveAuctionsQueryHandler listHandler,
@@ -73,7 +76,8 @@ public class AuctionController {
                               ProxyBidService proxyBidService,
                               UserService userService,
                               ItemValidationService itemValidationService,
-                              ItemRepository itemRepository) {
+                              ItemRepository itemRepository,
+                              FeatureFlagService featureFlagService) {
         this.commandBus = commandBus;
         this.listHandler = listHandler;
         this.detailsHandler = detailsHandler;
@@ -83,6 +87,7 @@ public class AuctionController {
         this.userService = userService;
         this.itemValidationService = itemValidationService;
         this.itemRepository = itemRepository;
+        this.featureFlagService = featureFlagService;
     }
 
     @PostMapping
@@ -216,7 +221,19 @@ public class AuctionController {
     public ResponseEntity<AuctionDetailsDTO> getAuction(@PathVariable String id) {
         GetAuctionDetailsQuery query = new GetAuctionDetailsQuery(id);
         Optional<AuctionDetailsDTO> dto = detailsHandler.handle(query);
-        return dto.map(d -> ResponseEntity.ok().header("Cache-Control", "max-age=60").body(d)).orElse(ResponseEntity.notFound().build());
+
+        // A/B testing: get UI variant
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        UnleashContext context = UnleashContext.builder()
+                .userId(userId)
+                .build();
+        String uiVariant = featureFlagService.getVariant("auction_ui_experiment", context);
+
+        return dto.map(d -> ResponseEntity.ok()
+                .header("Cache-Control", "max-age=60")
+                .header("X-UI-Variant", uiVariant)
+                .body(d))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/{id}/bids")
@@ -261,6 +278,19 @@ public class AuctionController {
         String userAgent = httpRequest.getHeader("User-Agent");
         Money amount = new Money(request.getAmount());
         String idempotencyKey = request.getIdempotencyKey();
+
+        // Kill switch: check if bidding is globally disabled
+        if (featureFlagService.isEnabled("bidding_kill_switch")) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build(); // Bidding temporarily disabled
+        }
+
+        // Feature flag check for advanced bidding features
+        UnleashContext context = UnleashContext.builder()
+                .userId(bidderId.toString())
+                .build();
+        if (!featureFlagService.isEnabled("advanced_bidding", context)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build(); // Feature not enabled for this user
+        }
 
         // Check for suspicious activity
         suspiciousActivityService.checkForSuspiciousActivity(bidderId.toString(), clientIp, userAgent, "BID_PLACEMENT");

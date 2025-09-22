@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'io.spring.dependency-management' version '1.1.4'
+    id 'org.owasp.dependencycheck' version '8.4.0'
 }
 
 allprojects {
@@ -44,5 +45,6 @@ dependencyManagement {
         dependency 'org.projectlombok:lombok:1.18.30'
         dependency 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
         dependency 'org.testcontainers:junit-jupiter:1.19.0'
+        dependency 'io.getunleash:unleash-client-java:9.2.0'
     }
 }
