@@ -7,14 +7,18 @@ public class PricePredictionRequest {
     private List<Double> historicalPrices;
     private String category;
     private int daysSinceStart;
+    private Long sellerId;
+    private Double sellerRating;
 
     public PricePredictionRequest() {}
 
-    public PricePredictionRequest(String auctionId, List<Double> historicalPrices, String category, int daysSinceStart) {
+    public PricePredictionRequest(String auctionId, List<Double> historicalPrices, String category, int daysSinceStart, Long sellerId, Double sellerRating) {
         this.auctionId = auctionId;
         this.historicalPrices = historicalPrices;
         this.category = category;
         this.daysSinceStart = daysSinceStart;
+        this.sellerId = sellerId;
+        this.sellerRating = sellerRating;
     }
 
     // getters and setters
@@ -29,4 +33,10 @@ public class PricePredictionRequest {
 
     public int getDaysSinceStart() { return daysSinceStart; }
     public void setDaysSinceStart(int daysSinceStart) { this.daysSinceStart = daysSinceStart; }
+
+    public Long getSellerId() { return sellerId; }
+    public void setSellerId(Long sellerId) { this.sellerId = sellerId; }
+
+    public Double getSellerRating() { return sellerRating; }
+    public void setSellerRating(Double sellerRating) { this.sellerRating = sellerRating; }
 }

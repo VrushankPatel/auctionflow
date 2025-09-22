@@ -18,6 +18,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,17 +35,19 @@ public class NotificationService {
     private final EmailService emailService;
     private final NotificationDeliveryRepository deliveryRepository;
     private final BatchedNotificationRepository batchedRepository;
+    private final RestTemplate restTemplate;
 
     public NotificationService(SimpMessagingTemplate messagingTemplate, StringRedisTemplate redisTemplate,
                                PushNotificationService pushNotificationService, EmailService emailService,
                                NotificationDeliveryRepository deliveryRepository,
-                               BatchedNotificationRepository batchedRepository) {
+                               BatchedNotificationRepository batchedRepository, RestTemplate restTemplate) {
         this.messagingTemplate = messagingTemplate;
         this.redisTemplate = redisTemplate;
         this.pushNotificationService = pushNotificationService;
         this.emailService = emailService;
         this.deliveryRepository = deliveryRepository;
         this.batchedRepository = batchedRepository;
+        this.restTemplate = restTemplate;
     }
 
     @KafkaListener(topics = "auction-events", groupId = "notification-service", containerFactory = "kafkaListenerContainerFactory")
@@ -254,6 +257,15 @@ public class NotificationService {
                 }
             }
         }
+    }
+
+    @Scheduled(fixedRate = 86400000) // Daily
+    public void sendPersonalizedRecommendations() {
+        // Assume users who have bid recently
+        // For simplicity, get all users from Redis or DB, but since no user repo here, assume from Redis
+        // This is placeholder; in real, query users who have preferences for recommendations
+        // For now, skip implementation as it requires more setup
+        logger.info("Sending personalized recommendations - placeholder");
     }
 
     private void notifyWatchers(String auctionId, String type, String message) {

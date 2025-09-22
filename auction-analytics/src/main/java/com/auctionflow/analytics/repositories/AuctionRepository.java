@@ -16,4 +16,6 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
 
     @Query("SELECT a FROM Auction a WHERE a.status = :status AND DATE(a.endTs) = DATE(:date)")
     List<Auction> findClosedAuctionsByDate(@Param("status") String status, @Param("date") LocalDateTime date);
+
+    List<Auction> findByItemIdIn(List<Long> itemIds);
 }

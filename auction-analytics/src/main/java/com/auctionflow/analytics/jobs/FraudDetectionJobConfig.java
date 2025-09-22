@@ -1,5 +1,6 @@
 package com.auctionflow.analytics.jobs;
 
+import com.auctionflow.analytics.FraudDetectionService;
 import com.auctionflow.analytics.MachineLearningService;
 import com.auctionflow.analytics.dtos.FraudAlertDTO;
 import com.auctionflow.analytics.dtos.FraudScoreRequest;
@@ -21,7 +22,6 @@ import org.springframework.data.domain.Sort;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.OptionalDouble;
 
 @Configuration
 public class FraudDetectionJobConfig {
@@ -34,6 +34,9 @@ public class FraudDetectionJobConfig {
 
     @Autowired
     private MachineLearningService mlService;
+
+    @Autowired
+    private FraudDetectionService fraudDetectionService;
 
     @Bean
     public ItemReader<User> fraudDetectionReader() {
@@ -48,50 +51,41 @@ public class FraudDetectionJobConfig {
     @Bean
     public ItemProcessor<User, FraudAlertDTO> fraudDetectionProcessor() {
         return user -> {
-            List<Bid> bids = bidRepository.findAll().stream()
-                    .filter(b -> b.getBidderId().equals(user.getId()))
-                    .toList();
+            // Velocity checks
+            FraudAlertDTO velocityAlert = fraudDetectionService.checkVelocity(user);
+            if (velocityAlert != null) return velocityAlert;
 
-            // Simple fraud detection: high bid frequency in last hour
-            LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
-            long recentBids = bids.stream()
-                    .filter(b -> b.getServerTs().isAfter(oneHourAgo))
-                    .count();
+            // Behavioral analysis
+            FraudAlertDTO behavioralAlert = fraudDetectionService.checkBehavioralPatterns(user);
+            if (behavioralAlert != null) return behavioralAlert;
 
-            if (recentBids > 10) { // threshold
-                return new FraudAlertDTO(user.getId(), user.getDisplayName(), "High Frequency Bidding",
-                        "Bidder placed " + recentBids + " bids in the last hour.");
-            }
+            // Pattern recognition
+            FraudAlertDTO patternAlert = fraudDetectionService.checkPatterns(user);
+            if (patternAlert != null) return patternAlert;
 
-            // Another pattern: winning too many auctions
-            long winningBids = bids.stream()
-                    .filter(b -> Boolean.TRUE.equals(b.getAccepted()))
-                    .count();
+            // Anomaly detection
+            FraudAlertDTO anomalyAlert = fraudDetectionService.checkAnomaly(user);
+            if (anomalyAlert != null) return anomalyAlert;
 
-            if (winningBids > bids.size() * 0.8) { // win rate > 80%
-                return new FraudAlertDTO(user.getId(), user.getDisplayName(), "High Win Rate",
-                        "Bidder has " + winningBids + " wins out of " + bids.size() + " bids.");
-            }
-
-            // ML-based fraud scoring
+            // Fallback to ML scoring
+            List<Bid> bids = bidRepository.findByBidderIdAndServerTsGreaterThanEqual(user.getId(), LocalDateTime.now().minusDays(30));
             if (!bids.isEmpty()) {
-                OptionalDouble avgBid = bids.stream().mapToDouble(b -> b.getAmount().doubleValue()).average();
+                double avgBid = bids.stream().mapToDouble(b -> b.getAmount().doubleValue()).average().orElse(0.0);
                 FraudScoreRequest mlRequest = new FraudScoreRequest(
                         user.getId().toString(),
-                        bids.get(0).getAuctionId().toString(), // assuming one auction for simplicity
-                        bids.get(bids.size() - 1).getAmount().doubleValue(), // latest bid
+                        bids.get(bids.size() - 1).getAuctionId().toString(),
+                        bids.get(bids.size() - 1).getAmount().doubleValue(),
                         bids.size(),
-                        avgBid.orElse(0.0)
+                        avgBid
                 );
 
                 try {
-                    FraudScoreResponse mlResponse = mlService.scoreFraud(mlRequest).block(); // synchronous call
-                    if (mlResponse != null && mlResponse.getFraudScore() > 0.7) { // high risk
+                    FraudScoreResponse mlResponse = mlService.scoreFraud(mlRequest).block();
+                    if (mlResponse != null && mlResponse.getFraudScore() > 0.7) {
                         return new FraudAlertDTO(user.getId(), user.getDisplayName(), "ML Detected Fraud",
                                 "Fraud score: " + mlResponse.getFraudScore() + ", Risk: " + mlResponse.getRiskLevel());
                     }
                 } catch (Exception e) {
-                    // Log error, but don't fail the job
                     System.err.println("Error calling ML service for user " + user.getId() + ": " + e.getMessage());
                 }
             }

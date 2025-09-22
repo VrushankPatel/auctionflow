@@ -34,8 +34,9 @@ dependencies {
      implementation 'net.logstash.logback:logstash-logback-encoder:7.3'
       implementation project(':auction-core')
      implementation project(':auction-common')
-      implementation project(':auction-events')
-      implementation 'org.springframework.graphql:spring-graphql'
+       implementation project(':auction-events')
+       implementation project(':auction-bidding-strategies')
+       implementation 'org.springframework.graphql:spring-graphql'
       implementation 'com.graphql-java:graphql-java-extended-scalars:21.0'
       implementation 'net.coobird:thumbnailator:0.4.20'
 }

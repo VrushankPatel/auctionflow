@@ -10,6 +10,7 @@ import reactor.core.publisher.Mono;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -20,11 +21,15 @@ public class AnalyticsController {
     private final RealtimeAnalyticsService analyticsService;
     private final MachineLearningService mlService;
     private final AuditService auditService;
+    private final RecommendationService recommendationService;
+    private final ABTestingService abTestingService;
 
-    public AnalyticsController(RealtimeAnalyticsService analyticsService, MachineLearningService mlService, AuditService auditService) {
+    public AnalyticsController(RealtimeAnalyticsService analyticsService, MachineLearningService mlService, AuditService auditService, RecommendationService recommendationService, ABTestingService abTestingService) {
         this.analyticsService = analyticsService;
         this.mlService = mlService;
         this.auditService = auditService;
+        this.recommendationService = recommendationService;
+        this.abTestingService = abTestingService;
     }
 
     @GetMapping("/top-auctions")
@@ -79,6 +84,35 @@ public class AnalyticsController {
         return mlService.scoreFraud(request)
                 .map(ResponseEntity::ok)
                 .onErrorResume(e -> Mono.just(ResponseEntity.internalServerError().build()));
+    }
+
+    @PostMapping("/recommend")
+    public ResponseEntity<RecommendationResponse> getRecommendations(@RequestBody RecommendationRequest request) {
+        auditService.logApiRequest(null, "/analytics/recommend", getClientIp(), "request: " + request.toString());
+        String userId = request.getUserId() != null ? request.getUserId().toString() : "anonymous";
+        String variant = abTestingService.assignVariant("recommendation_algorithm", userId);
+        List<Long> recommended;
+        if (request.getAuctionId() != null) {
+            // Similar auctions - use collaborative
+            recommended = recommendationService.getSimilarAuctionsCollaborative(request.getAuctionId(), request.getLimit());
+        } else if (request.getUserId() != null) {
+            // Personalized recommendations - use variant
+            if ("collaborative".equals(variant)) {
+                recommended = recommendationService.getRecommendedAuctions(request.getUserId(), request.getLimit());
+            } else if ("content_based".equals(variant)) {
+                // For simplicity, use hybrid
+                recommended = recommendationService.getRecommendedAuctions(request.getUserId(), request.getLimit());
+            } else {
+                recommended = recommendationService.getRecommendedAuctions(request.getUserId(), request.getLimit());
+            }
+        } else {
+            return ResponseEntity.badRequest().build();
+        }
+        // Log impression
+        abTestingService.logEvent("recommendation_algorithm", variant, userId, "impression", Map.of("count", recommended.size()));
+        RecommendationResponse response = new RecommendationResponse();
+        response.setRecommendedAuctionIds(recommended);
+        return ResponseEntity.ok(response);
     }
 
     private String getClientIp() {

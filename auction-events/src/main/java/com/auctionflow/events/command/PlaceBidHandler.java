@@ -15,6 +15,9 @@ import com.auctionflow.events.EventStore;
 import com.auctionflow.events.persistence.ProxyBidEntity;
 import com.auctionflow.events.persistence.ProxyBidRepository;
 import com.auctionflow.timers.AntiSnipeExtension;
+import com.auctionflow.bidding.strategies.AutomatedBiddingService;
+import com.auctionflow.bidding.strategies.BidDecision;
+import com.auctionflow.bidding.strategies.StrategyBidDecision;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -38,13 +41,15 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
     private final RedissonClient redissonClient;
     private final AntiSnipeExtension antiSnipeExtension;
     private final ProxyBidRepository proxyBidRepository;
+    private final AutomatedBiddingService automatedBiddingService;
 
-    public PlaceBidHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient, AntiSnipeExtension antiSnipeExtension, ProxyBidRepository proxyBidRepository) {
+    public PlaceBidHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient, AntiSnipeExtension antiSnipeExtension, ProxyBidRepository proxyBidRepository, AutomatedBiddingService automatedBiddingService) {
         this.eventStore = eventStore;
         this.kafkaTemplate = kafkaTemplate;
         this.redissonClient = redissonClient;
         this.antiSnipeExtension = antiSnipeExtension;
         this.proxyBidRepository = proxyBidRepository;
+        this.automatedBiddingService = automatedBiddingService;
     }
 
     @Override
@@ -89,6 +94,7 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
                     // Handle proxy bidding after the initial bid is placed
                     if (type != AuctionType.DUTCH) {
                         handleProxyBidding(command.auctionId(), aggregate);
+                        handleAutomatedBidding(command.auctionId(), aggregate);
                     }
 
                     // Check for anti-snipe extension (only for English)
@@ -176,6 +182,46 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
             // If this proxy bid reached its max, mark as won or active
             if (nextBidAmount.toBigDecimal().compareTo(proxyBid.getMaxBid()) >= 0) {
                 proxyBidRepository.updateStatus(proxyBid.getId(), "WON");
+            }
+        }
+    }
+
+    private void handleAutomatedBidding(com.auctionflow.core.domain.valueobjects.AuctionId auctionId, AggregateRoot aggregate) {
+        // Get current highest bid after proxy bidding
+        AuctionAggregate auctionAgg = (AuctionAggregate) aggregate;
+        Optional<com.auctionflow.core.domain.valueobjects.Bid> highestBidOpt = auctionAgg.getBids().stream()
+            .max(java.util.Comparator.comparing(com.auctionflow.core.domain.valueobjects.Bid::amount));
+
+        if (highestBidOpt.isEmpty()) {
+            return;
+        }
+
+        Money currentHighest = highestBidOpt.get().amount();
+        Instant auctionEndTime = auctionAgg.getEndTime();
+
+        // Evaluate automated strategies
+        List<StrategyBidDecision> decisions = automatedBiddingService.evaluateStrategies(auctionId, currentHighest, auctionEndTime);
+
+        for (StrategyBidDecision strategyDecision : decisions) {
+            BidDecision decision = strategyDecision.getDecision();
+            if (decision.shouldBid() && decision.getBidTime().isBefore(Instant.now().plusSeconds(1))) { // Only immediate bids for now
+                // Place the automated bid for this user
+                BidderId bidderId = BidderId.fromString(strategyDecision.getStrategy().getBidderId());
+                PlaceBidCommand autoCommand = new PlaceBidCommand(auctionId, bidderId, decision.getBidAmount(), "automated-" + strategyDecision.getStrategy().getId());
+
+                // Handle the automated bid
+                auctionAgg.handle(autoCommand);
+                List<DomainEvent> autoEvents = auctionAgg.getDomainEvents();
+                long newExpectedVersion = auctionAgg.getExpectedVersion() + autoEvents.size();
+                eventStore.save(autoEvents, auctionAgg.getExpectedVersion());
+                auctionAgg.setExpectedVersion(newExpectedVersion);
+                for (DomainEvent event : autoEvents) {
+                    kafkaTemplate.send("auction-events", event.getAggregateId().toString(), event);
+                }
+                auctionAgg.clearDomainEvents();
+
+                // Update current highest for next iteration
+                currentHighest = decision.getBidAmount();
             }
         }
     }

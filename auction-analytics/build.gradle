@@ -19,6 +19,8 @@ dependencies {
      implementation 'io.opentelemetry:opentelemetry-extension-annotations'
      implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'
      implementation 'net.logstash.logback:logstash-logback-encoder:7.3'
+     implementation 'ml.dmlc:xgboost4j_2.12:1.7.6'
+     implementation 'ml.dmlc:xgboost4j-spark_2.12:1.7.6'
      implementation project(':auction-core')
     implementation project(':auction-common')
 }

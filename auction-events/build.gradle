@@ -18,5 +18,6 @@ dependencies {
      implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'
      implementation project(':auction-core')
     implementation project(':auction-common')
-    implementation project(':auction-timers')
+     implementation project(':auction-timers')
+     implementation project(':auction-bidding-strategies')
 }

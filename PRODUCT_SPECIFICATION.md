@@ -7,6 +7,7 @@ Agenda — what you’ll get now:
 3. Data model (tables + minimal fields).
 4. Complete REST API surface (endpoints + purpose).
 5. Timers and scheduling (wheel timer design, anti-snipe).
+6. Automated bidding strategies (sniping prevention, optimal timing, budget optimization, reinforcement learning).
 6. Concurrency, ordering, timestamping, fairness.
 7. Rate limiting, prioritization, QoS.
 8. Broadcaster / real-time notifications.
@@ -14,6 +15,7 @@ Agenda — what you’ll get now:
 10. Security, durability, observability, scaling.
 11. Implementation plan and priorities.
 12. Testing and verification checklist.
+13. Automated bidding strategies.
 
 1) Vision and core requirements
 
@@ -156,8 +158,17 @@ For every write (bids, create auction, buy-now) return a small result object wit
 * Add Kafka event stream. Add per-auction shard/leader routing. Implement seq\_no logic and idempotency. Add anti-snipe extension policy.
   Phase 2 (hardening)
 * Add Redis/Kafka-based broadcaster, persisted scheduled jobs, payment integration, KYC flows, rate-limiting infra, monitoring, alerting.
-  Phase 3 (scale/HA)
+   Phase 3 (scale/HA)
 * Partition DB, deploy multiple timer workers with leader election per partition, disaster recovery, DDL and schema evolution plan.
+   Phase 4 (AI features)
+* Implement full reinforcement learning for bidding strategies, integrate ML models, add strategy analytics.
+
+13. Automated bidding strategies
+
+* Users can set up automated bidding strategies to bid on their behalf.
+* Strategy types: sniping prevention (bid early to avoid last-minute), optimal timing (bid during low activity), budget optimization (distribute budget across auctions), reinforcement learning (adaptive bidding based on past performance).
+* Strategies are evaluated after each bid placement to determine if automated bids should be placed.
+* Integration with existing bid flow and event system.
 
 14. Testing and verification checklist
 

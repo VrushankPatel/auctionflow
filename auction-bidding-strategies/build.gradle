@@ -1,0 +1,18 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    implementation project(':auction-core')
+    implementation project(':auction-common')
+    implementation project(':auction-api')
+    implementation project(':auction-events')
+
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+    // For reinforcement learning (add later if needed)
+    // implementation 'org.deeplearning4j:deeplearning4j-core:1.0.0-M2.1'
+    // implementation 'org.nd4j:nd4j-native-platform:1.0.0-M2.1'
+}
