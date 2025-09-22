@@ -24,6 +24,7 @@ public class Resilience4jConfig {
         registry.rateLimiter("perUser", perUserRateLimiterConfig());
         registry.rateLimiter("perIp", perIpRateLimiterConfig());
         registry.rateLimiter("perAuction", perAuctionRateLimiterConfig());
+        registry.rateLimiter("ipRateLimiter", ipRateLimiterConfig());
 
         return registry;
     }
@@ -59,6 +60,14 @@ public class Resilience4jConfig {
     private RateLimiterConfig perAuctionRateLimiterConfig() {
         return RateLimiterConfig.custom()
                 .limitForPeriod(100) // 100 bids per second per auction
+                .limitRefreshPeriod(Duration.ofSeconds(1))
+                .timeoutDuration(Duration.ofMillis(100))
+                .build();
+    }
+
+    private RateLimiterConfig ipRateLimiterConfig() {
+        return RateLimiterConfig.custom()
+                .limitForPeriod(20) // 20 requests per second per IP
                 .limitRefreshPeriod(Duration.ofSeconds(1))
                 .timeoutDuration(Duration.ofMillis(100))
                 .build();

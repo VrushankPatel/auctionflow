@@ -16,12 +16,15 @@ public class KafkaEventPublisher {
     public static final String AUCTION_EVENTS_TOPIC = "auction-events";
     public static final String BID_EVENTS_TOPIC = "bid-events";
     public static final String NOTIFICATION_EVENTS_TOPIC = "notification-events";
+    public static final String SECURITY_EVENTS_TOPIC = "security-events";
     public static final String FAILED_EVENTS_TOPIC = "failed-events";
 
     private final KafkaTemplate<String, DomainEvent> kafkaTemplate;
+    private final KafkaTemplate<String, SecurityEvent> securityKafkaTemplate;
 
-    public KafkaEventPublisher(KafkaTemplate<String, DomainEvent> kafkaTemplate) {
+    public KafkaEventPublisher(KafkaTemplate<String, DomainEvent> kafkaTemplate, KafkaTemplate<String, SecurityEvent> securityKafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
+        this.securityKafkaTemplate = securityKafkaTemplate;
     }
 
     public void publish(DomainEvent event) {
@@ -38,6 +41,24 @@ public class KafkaEventPublisher {
             public void onFailure(Throwable ex) {
                 logger.error("Failed to publish event {} to topic {}", event.getEventId(), topic, ex);
                 sendToDLQ(event, ex);
+            }
+        });
+    }
+
+    public void publishSecurityEvent(SecurityEvent event) {
+        String topic = SECURITY_EVENTS_TOPIC;
+        String key = event.getEventId().toString();
+
+        securityKafkaTemplate.send(topic, key, event).addCallback(new ListenableFutureCallback<SendResult<String, SecurityEvent>>() {
+            @Override
+            public void onSuccess(SendResult<String, SecurityEvent> result) {
+                logger.info("Successfully published security event {} to topic {}", event.getEventId(), topic);
+            }
+
+            @Override
+            public void onFailure(Throwable ex) {
+                logger.error("Failed to publish security event {} to topic {}", event.getEventId(), topic, ex);
+                sendSecurityToDLQ(event, ex);
             }
         });
     }
@@ -61,6 +82,15 @@ public class KafkaEventPublisher {
             logger.info("Sent failed event {} to DLQ", event.getEventId());
         } catch (Exception dlqEx) {
             logger.error("Failed to send event {} to DLQ", event.getEventId(), dlqEx);
+        }
+    }
+
+    private void sendSecurityToDLQ(SecurityEvent event, Throwable ex) {
+        try {
+            securityKafkaTemplate.send(FAILED_EVENTS_TOPIC, event.getEventId().toString(), event);
+            logger.info("Sent failed security event {} to DLQ", event.getEventId());
+        } catch (Exception dlqEx) {
+            logger.error("Failed to send security event {} to DLQ", event.getEventId(), dlqEx);
         }
     }
 }

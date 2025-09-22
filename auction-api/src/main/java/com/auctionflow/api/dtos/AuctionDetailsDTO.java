@@ -6,6 +6,7 @@ import java.time.Instant;
 public class AuctionDetailsDTO {
     private String auctionId;
     private String itemId;
+    private String sellerId;
     private String title;
     private String description;
     private String status;
@@ -23,6 +24,9 @@ public class AuctionDetailsDTO {
 
     public String getItemId() { return itemId; }
     public void setItemId(String itemId) { this.itemId = itemId; }
+
+    public String getSellerId() { return sellerId; }
+    public void setSellerId(String sellerId) { this.sellerId = sellerId; }
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }

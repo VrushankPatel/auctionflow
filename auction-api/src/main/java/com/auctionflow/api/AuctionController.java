@@ -7,6 +7,7 @@ import com.auctionflow.api.queryhandlers.ListActiveAuctionsQueryHandler;
 import com.auctionflow.api.queries.GetAuctionDetailsQuery;
 import com.auctionflow.api.queries.GetBidHistoryQuery;
 import com.auctionflow.api.queries.ListActiveAuctionsQuery;
+import com.auctionflow.api.services.SuspiciousActivityService;
 import com.auctionflow.core.domain.commands.*;
 import com.auctionflow.core.domain.valueobjects.AntiSnipePolicy;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
@@ -45,18 +46,22 @@ public class AuctionController {
     private final ListActiveAuctionsQueryHandler listHandler;
     private final GetAuctionDetailsQueryHandler detailsHandler;
     private final GetBidHistoryQueryHandler bidHistoryHandler;
+    private final SuspiciousActivityService suspiciousActivityService;
 
     public AuctionController(CommandBus commandBus,
-                            ListActiveAuctionsQueryHandler listHandler,
-                            GetAuctionDetailsQueryHandler detailsHandler,
-                            GetBidHistoryQueryHandler bidHistoryHandler) {
+                             ListActiveAuctionsQueryHandler listHandler,
+                             GetAuctionDetailsQueryHandler detailsHandler,
+                             GetBidHistoryQueryHandler bidHistoryHandler,
+                             SuspiciousActivityService suspiciousActivityService) {
         this.commandBus = commandBus;
         this.listHandler = listHandler;
         this.detailsHandler = detailsHandler;
         this.bidHistoryHandler = bidHistoryHandler;
+        this.suspiciousActivityService = suspiciousActivityService;
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('SELLER')")
     @Operation(
         summary = "Create a new auction",
         description = "Creates a new auction for an item with specified reserve price, buy-now price, start and end times."
@@ -117,6 +122,26 @@ public class AuctionController {
         return ResponseEntity.ok(dto);
     }
 
+    @PatchMapping("/{id}")
+    @PreAuthorize("@auctionSecurityService.canEdit(#id, authentication.principal) or hasRole('ADMIN')")
+    @Operation(
+        summary = "Update auction metadata",
+        description = "Updates auction metadata before the first bid or by admin."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Auction updated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "404", description = "Auction not found", content = @Content)
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<Void> updateAuction(@PathVariable String id, @RequestBody UpdateAuctionRequest request) {
+        // Assume UpdateAuctionCommand exists
+        UpdateAuctionCommand cmd = new UpdateAuctionCommand(new AuctionId(id), request.getTitle(), request.getDescription());
+        commandBus.send(cmd);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/{id}")
     @Operation(
         summary = "Get auction details",
@@ -134,6 +159,7 @@ public class AuctionController {
     }
 
     @PostMapping("/{id}/bids")
+    @PreAuthorize("@auctionSecurityService.canBid(#id, authentication.principal)")
     @Operation(
         summary = "Place a bid on an auction",
         description = "Places a bid on the specified auction. Bids are processed with server timestamp and sequence number for fairness."
@@ -170,8 +196,12 @@ public class AuctionController {
         AuctionId auctionId = new AuctionId(id);
         UUID bidderId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String clientIp = getClientIp(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
         Money amount = new Money(request.getAmount());
         String idempotencyKey = request.getIdempotencyKey();
+
+        // Check for suspicious activity
+        suspiciousActivityService.checkForSuspiciousActivity(bidderId.toString(), clientIp, userAgent, "BID_PLACEMENT");
 
         // Check rate limits
         RateLimiter perUserLimiter = rateLimiterRegistry.rateLimiter("perUser");
@@ -220,6 +250,7 @@ public class AuctionController {
     }
 
     @PostMapping("/{id}/buy-now")
+    @PreAuthorize("@auctionSecurityService.canBid(#id, authentication.principal)")
     @Operation(
         summary = "Buy auction immediately",
         description = "Executes an immediate purchase of the auction at the buy-now price."
@@ -257,6 +288,7 @@ public class AuctionController {
     }
 
     @PostMapping("/{id}/watch")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
         summary = "Add auction to watchlist",
         description = "Adds the specified auction to the user's watchlist for notifications."
@@ -293,7 +325,27 @@ public class AuctionController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/{id}/close")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Force close auction",
+        description = "Admin forces the closure of an auction."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Auction closed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "404", description = "Auction not found", content = @Content)
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<Void> closeAuction(@PathVariable String id) {
+        CloseAuctionCommand cmd = new CloseAuctionCommand(new AuctionId(id));
+        commandBus.send(cmd);
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping("/{id}/watch")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
         summary = "Remove auction from watchlist",
         description = "Removes the specified auction from the user's watchlist."

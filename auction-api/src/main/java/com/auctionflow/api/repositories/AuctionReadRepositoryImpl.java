@@ -14,7 +14,7 @@ import java.util.Optional;
 @Repository
 public interface AuctionReadRepositoryImpl extends JpaRepository<com.auctionflow.api.entities.Auction, String>, AuctionReadRepository {
 
-    @Query("SELECT new com.auctionflow.api.dtos.AuctionDetailsDTO(a.id, i.id, i.title, i.description, a.status, a.startTs, a.endTs, a.reservePrice, a.buyNowPrice, b.amount, b.bidderId, b.serverTs) " +
+    @Query("SELECT new com.auctionflow.api.dtos.AuctionDetailsDTO(a.id, i.id, i.sellerId, i.title, i.description, a.status, a.startTs, a.endTs, a.reservePrice, a.buyNowPrice, b.amount, b.bidderId, b.serverTs) " +
            "FROM Auction a " +
            "LEFT JOIN Item i ON a.itemId = i.id " +
            "LEFT JOIN Bid b ON a.id = b.auctionId AND b.accepted = true AND b.amount = (SELECT MAX(b2.amount) FROM Bid b2 WHERE b2.auctionId = a.id AND b2.accepted = true) " +

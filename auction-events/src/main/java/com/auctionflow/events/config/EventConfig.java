@@ -1,6 +1,7 @@
 package com.auctionflow.events.config;
 
 import com.auctionflow.core.domain.events.DomainEvent;
+import com.auctionflow.core.domain.events.SecurityEvent;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.redisson.Redisson;
@@ -39,6 +40,25 @@ public class EventConfig {
     @Bean
     public KafkaTemplate<String, DomainEvent> kafkaTemplate(ProducerFactory<String, DomainEvent> producerFactory) {
         return new KafkaTemplate<>(producerFactory);
+    }
+
+    @Bean
+    public ProducerFactory<String, SecurityEvent> securityProducerFactory(@Value("${kafka.bootstrap-servers:localhost:9092}") String bootstrapServers) {
+        Map<String, Object> configProps = new HashMap<>();
+        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        configProps.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+        configProps.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
+        configProps.put(ProducerConfig.LINGER_MS_CONFIG, 5);
+        configProps.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384);
+        configProps.put(ProducerConfig.ACKS_CONFIG, "all");
+        return new DefaultKafkaProducerFactory<>(configProps);
+    }
+
+    @Bean
+    public KafkaTemplate<String, SecurityEvent> securityKafkaTemplate(ProducerFactory<String, SecurityEvent> securityProducerFactory) {
+        return new KafkaTemplate<>(securityProducerFactory);
     }
 
     @Bean
