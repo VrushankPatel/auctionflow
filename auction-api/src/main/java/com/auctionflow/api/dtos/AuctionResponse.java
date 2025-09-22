@@ -17,6 +17,7 @@ public class AuctionResponse extends RepresentationModel<AuctionResponse> {
     private Instant endTs;
     private BigDecimal reservePrice;
     private BigDecimal buyNowPrice;
+    private boolean hiddenReserve;
     private BigDecimal currentHighestBid;
     private String highestBidderId;
     private Instant lastBidTs;
@@ -48,6 +49,9 @@ public class AuctionResponse extends RepresentationModel<AuctionResponse> {
 
     public BigDecimal getBuyNowPrice() { return buyNowPrice; }
     public void setBuyNowPrice(BigDecimal buyNowPrice) { this.buyNowPrice = buyNowPrice; }
+
+    public boolean isHiddenReserve() { return hiddenReserve; }
+    public void setHiddenReserve(boolean hiddenReserve) { this.hiddenReserve = hiddenReserve; }
 
     public BigDecimal getCurrentHighestBid() { return currentHighestBid; }
     public void setCurrentHighestBid(BigDecimal currentHighestBid) { this.currentHighestBid = currentHighestBid; }

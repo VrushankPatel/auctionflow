@@ -1,13 +1,9 @@
 package com.auctionflow.events.command;
 
 import com.auctionflow.common.exceptions.OptimisticLockException;
-import com.auctionflow.core.domain.aggregates.AggregateRoot;
-import com.auctionflow.core.domain.aggregates.AuctionAggregate;
 import com.auctionflow.core.domain.aggregates.DutchAuctionAggregate;
-import com.auctionflow.core.domain.commands.CloseAuctionCommand;
-import com.auctionflow.core.domain.events.AuctionCreatedEvent;
+import com.auctionflow.core.domain.commands.ReducePriceCommand;
 import com.auctionflow.core.domain.events.DomainEvent;
-import com.auctionflow.core.domain.valueobjects.AuctionType;
 import com.auctionflow.events.EventStore;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -20,13 +16,13 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public class CloseAuctionHandler implements CommandHandler<CloseAuctionCommand> {
+public class ReducePriceHandler implements CommandHandler<ReducePriceCommand> {
 
     private final EventStore eventStore;
     private final KafkaTemplate<String, DomainEvent> kafkaTemplate;
     private final RedissonClient redissonClient;
 
-    public CloseAuctionHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient) {
+    public ReducePriceHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient) {
         this.eventStore = eventStore;
         this.kafkaTemplate = kafkaTemplate;
         this.redissonClient = redissonClient;
@@ -35,7 +31,7 @@ public class CloseAuctionHandler implements CommandHandler<CloseAuctionCommand> 
     @Override
     @Async
     @EventListener
-    public void handle(CloseAuctionCommand command) {
+    public void handle(ReducePriceCommand command) {
         String lockKey = "auction:" + command.auctionId().value();
         RLock lock = redissonClient.getLock(lockKey);
         try {
@@ -47,21 +43,8 @@ public class CloseAuctionHandler implements CommandHandler<CloseAuctionCommand> 
             for (int attempt = 0; attempt <= maxRetries; attempt++) {
                 try {
                     List<DomainEvent> events = eventStore.getEvents(command.auctionId());
-                    AuctionType type = events.stream()
-                        .filter(e -> e instanceof AuctionCreatedEvent)
-                        .map(e -> ((AuctionCreatedEvent) e).getAuctionType())
-                        .findFirst()
-                        .orElse(AuctionType.ENGLISH_OPEN);
-                    AggregateRoot aggregate;
-                    if (type == AuctionType.DUTCH) {
-                        DutchAuctionAggregate dutch = new DutchAuctionAggregate(events);
-                        dutch.handle(command);
-                        aggregate = dutch;
-                    } else {
-                        AuctionAggregate english = new AuctionAggregate(events);
-                        english.handle(command);
-                        aggregate = english;
-                    }
+                    DutchAuctionAggregate aggregate = new DutchAuctionAggregate(events);
+                    aggregate.handle(command);
                     List<DomainEvent> newEvents = aggregate.getDomainEvents();
                     eventStore.save(newEvents, aggregate.getExpectedVersion());
                     // Publish to Kafka

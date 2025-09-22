@@ -1,18 +1,22 @@
 package com.auctionflow.core.domain.commands;
 
 import com.auctionflow.core.domain.valueobjects.AntiSnipePolicy;
+import com.auctionflow.core.domain.valueobjects.AuctionType;
 import com.auctionflow.core.domain.valueobjects.ItemId;
 import com.auctionflow.core.domain.valueobjects.Money;
 
 import java.time.Instant;
 
-public record CreateAuctionCommand(ItemId itemId, String categoryId, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, AntiSnipePolicy antiSnipePolicy) {
+public record CreateAuctionCommand(ItemId itemId, String categoryId, AuctionType auctionType, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, AntiSnipePolicy antiSnipePolicy, boolean hiddenReserve) {
     public CreateAuctionCommand {
         if (itemId == null) {
             throw new IllegalArgumentException("ItemId cannot be null");
         }
         if (categoryId == null || categoryId.isBlank()) {
             throw new IllegalArgumentException("CategoryId cannot be null or blank");
+        }
+        if (auctionType == null) {
+            throw new IllegalArgumentException("AuctionType cannot be null");
         }
         if (reservePrice == null) {
             throw new IllegalArgumentException("ReservePrice cannot be null");

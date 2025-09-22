@@ -25,6 +25,8 @@ public class Auction {
 
     private BigDecimal buyNowPrice;
 
+    private boolean hiddenReserve;
+
     private LocalDateTime createdAt;
 
     // Getters and setters
@@ -91,6 +93,14 @@ public class Auction {
 
     public void setBuyNowPrice(BigDecimal buyNowPrice) {
         this.buyNowPrice = buyNowPrice;
+    }
+
+    public boolean isHiddenReserve() {
+        return hiddenReserve;
+    }
+
+    public void setHiddenReserve(boolean hiddenReserve) {
+        this.hiddenReserve = hiddenReserve;
     }
 
     public LocalDateTime getCreatedAt() {

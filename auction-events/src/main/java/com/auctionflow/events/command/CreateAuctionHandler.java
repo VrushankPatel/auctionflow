@@ -1,8 +1,11 @@
 package com.auctionflow.events.command;
 
+import com.auctionflow.core.domain.aggregates.AggregateRoot;
 import com.auctionflow.core.domain.aggregates.AuctionAggregate;
+import com.auctionflow.core.domain.aggregates.DutchAuctionAggregate;
 import com.auctionflow.core.domain.commands.CreateAuctionCommand;
 import com.auctionflow.core.domain.events.DomainEvent;
+import com.auctionflow.core.domain.valueobjects.AuctionType;
 import com.auctionflow.events.EventStore;
 import com.auctionflow.timers.AuctionTimerService;
 import org.redisson.api.RLock;
@@ -34,7 +37,12 @@ public class CreateAuctionHandler implements CommandHandler<CreateAuctionCommand
     @Async
     @EventListener
     public void handle(CreateAuctionCommand command) {
-        AuctionAggregate aggregate = new AuctionAggregate();
+        AggregateRoot aggregate;
+        if (command.auctionType() == AuctionType.DUTCH) {
+            aggregate = new DutchAuctionAggregate();
+        } else {
+            aggregate = new AuctionAggregate();
+        }
         aggregate.handle(command);
         List<DomainEvent> events = aggregate.getDomainEvents();
         String lockKey = "auction:" + aggregate.getId().value();
@@ -50,6 +58,11 @@ public class CreateAuctionHandler implements CommandHandler<CreateAuctionCommand
             }
             // Schedule auction close timer
             auctionTimerService.scheduleAuctionClose(aggregate.getId(), aggregate.getEndTime());
+            // For Dutch, schedule price reductions
+            if (aggregate instanceof DutchAuctionAggregate dutch) {
+                long intervalMillis = dutch.getRules().decrementInterval().toMillis();
+                auctionTimerService.schedulePriceReductions(dutch.getId(), intervalMillis, dutch.getEndTime());
+            }
             aggregate.clearDomainEvents();
         } finally {
             if (lock.isHeldByCurrentThread()) {

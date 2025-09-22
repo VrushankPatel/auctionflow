@@ -2,6 +2,7 @@ package com.auctionflow.core.domain.events;
 
 import com.auctionflow.core.domain.valueobjects.AntiSnipePolicy;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
+import com.auctionflow.core.domain.valueobjects.AuctionType;
 import com.auctionflow.core.domain.valueobjects.ItemId;
 import com.auctionflow.core.domain.valueobjects.Money;
 
@@ -11,23 +12,30 @@ import java.util.UUID;
 public class AuctionCreatedEvent extends DomainEvent {
     private final ItemId itemId;
     private final String categoryId;
+    private final AuctionType auctionType;
     private final Money reservePrice;
     private final Money buyNowPrice;
     private final Instant startTime;
     private final Instant endTime;
     private final AntiSnipePolicy antiSnipePolicy;
+    private final boolean hiddenReserve;
 
-    public AuctionCreatedEvent(AuctionId auctionId, ItemId itemId, String categoryId, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, AntiSnipePolicy antiSnipePolicy, UUID eventId, Instant timestamp, long sequenceNumber) {
+    public AuctionCreatedEvent(AuctionId auctionId, ItemId itemId, String categoryId, AuctionType auctionType, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, AntiSnipePolicy antiSnipePolicy, boolean hiddenReserve, UUID eventId, Instant timestamp, long sequenceNumber) {
         super(auctionId, eventId, timestamp, sequenceNumber);
         this.itemId = itemId;
         this.categoryId = categoryId;
+        this.auctionType = auctionType;
         this.reservePrice = reservePrice;
         this.buyNowPrice = buyNowPrice;
         this.startTime = startTime;
         this.endTime = endTime;
         this.antiSnipePolicy = antiSnipePolicy;
+        this.hiddenReserve = hiddenReserve;
         if (auctionId == null) {
             throw new IllegalArgumentException("AuctionId cannot be null");
+        }
+        if (auctionType == null) {
+            throw new IllegalArgumentException("AuctionType cannot be null");
         }
         // other validations as needed
     }
@@ -58,5 +66,13 @@ public class AuctionCreatedEvent extends DomainEvent {
 
     public String getCategoryId() {
         return categoryId;
+    }
+
+    public AuctionType getAuctionType() {
+        return auctionType;
+    }
+
+    public boolean isHiddenReserve() {
+        return hiddenReserve;
     }
 }

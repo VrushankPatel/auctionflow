@@ -1,6 +1,8 @@
 package com.auctionflow.notifications;
 
 import com.auctionflow.core.domain.events.*;
+import com.auctionflow.core.domain.events.ProxyBidOutbidEvent;
+import com.auctionflow.core.domain.events.ReserveMetEvent;
 import com.auctionflow.notifications.entity.BatchedNotification;
 import com.auctionflow.notifications.entity.NotificationDelivery;
 import com.auctionflow.notifications.repository.BatchedNotificationRepository;
@@ -66,6 +68,10 @@ public class NotificationService {
                 handleBidPlaced((BidPlacedEvent) event);
             } else if (event instanceof BidRejectedEvent) {
                 handleBidRejected((BidRejectedEvent) event);
+            } else if (event instanceof ProxyBidOutbidEvent) {
+                handleProxyBidOutbid((ProxyBidOutbidEvent) event);
+            } else if (event instanceof ReserveMetEvent) {
+                handleReserveMet((ReserveMetEvent) event);
             }
         }
         acknowledgment.acknowledge(); // Batch commit
@@ -107,6 +113,25 @@ public class NotificationService {
         String bidderId = event.getBidderId().toString();
         String auctionId = event.getAuctionId().getValue().toString();
         sendNotification(bidderId, "BidRejected", "Your bid has been rejected for auction " + auctionId);
+    }
+
+    private void handleProxyBidOutbid(ProxyBidOutbidEvent event) {
+        String userId = event.getUserId().toString();
+        String auctionId = event.getAuctionId().getValue().toString();
+        sendNotification(userId, "ProxyBidOutbid", "Your proxy bid has been outbid on auction " + auctionId + ". " + event.getReason());
+    }
+
+    private void handleReserveMet(ReserveMetEvent event) {
+        String auctionId = event.getAuctionId().getValue().toString();
+        String bidderId = event.getBidderId().toString();
+        // Notify seller that reserve has been met
+        // Assuming sellerId is stored in Redis or fetched
+        String sellerId = redisTemplate.opsForValue().get("seller:auction:" + auctionId);
+        if (sellerId != null) {
+            sendNotification(sellerId, "ReserveMet", "Reserve price has been met on auction " + auctionId + " by bidder " + bidderId);
+        }
+        // Optionally notify watchers
+        notifyWatchers(auctionId, "ReserveMet", "Reserve price has been met on auction " + auctionId);
     }
 
     private void handleAuctionExtended(AuctionExtendedEvent event) {

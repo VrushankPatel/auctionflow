@@ -13,8 +13,9 @@ public class Auction {
     private String status;
     private Instant startTs;
     private Instant endTs;
-    private BigDecimal reservePrice;
+    private String encryptedReservePrice;
     private BigDecimal buyNowPrice;
+    private boolean hiddenReserve;
 
     // getters and setters
     public String getId() { return id; }
@@ -32,9 +33,12 @@ public class Auction {
     public Instant getEndTs() { return endTs; }
     public void setEndTs(Instant endTs) { this.endTs = endTs; }
 
-    public BigDecimal getReservePrice() { return reservePrice; }
-    public void setReservePrice(BigDecimal reservePrice) { this.reservePrice = reservePrice; }
+    public String getEncryptedReservePrice() { return encryptedReservePrice; }
+    public void setEncryptedReservePrice(String encryptedReservePrice) { this.encryptedReservePrice = encryptedReservePrice; }
 
     public BigDecimal getBuyNowPrice() { return buyNowPrice; }
     public void setBuyNowPrice(BigDecimal buyNowPrice) { this.buyNowPrice = buyNowPrice; }
+
+    public boolean isHiddenReserve() { return hiddenReserve; }
+    public void setHiddenReserve(boolean hiddenReserve) { this.hiddenReserve = hiddenReserve; }
 }

@@ -7,12 +7,16 @@ import com.auctionflow.api.queryhandlers.ListActiveAuctionsQueryHandler;
 import com.auctionflow.api.queries.GetAuctionDetailsQuery;
 import com.auctionflow.api.queries.GetBidHistoryQuery;
 import com.auctionflow.api.queries.ListActiveAuctionsQuery;
+import com.auctionflow.api.services.ProxyBidService;
 import com.auctionflow.api.services.SuspiciousActivityService;
 import com.auctionflow.core.domain.commands.*;
+import com.auctionflow.core.domain.commands.MakeOfferCommand;
 import com.auctionflow.core.domain.valueobjects.AntiSnipePolicy;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
+import com.auctionflow.core.domain.valueobjects.BidderId;
 import com.auctionflow.core.domain.valueobjects.ItemId;
 import com.auctionflow.core.domain.valueobjects.Money;
+import com.auctionflow.core.domain.valueobjects.SellerId;
 import com.auctionflow.events.command.CommandBus;
 import io.github.resilience4j.ratelimiter.RateLimiter;
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
@@ -27,6 +31,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +40,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -48,17 +55,20 @@ public class AuctionController {
     private final GetAuctionDetailsQueryHandler detailsHandler;
     private final GetBidHistoryQueryHandler bidHistoryHandler;
     private final SuspiciousActivityService suspiciousActivityService;
+    private final ProxyBidService proxyBidService;
 
     public AuctionController(CommandBus commandBus,
-                             ListActiveAuctionsQueryHandler listHandler,
-                             GetAuctionDetailsQueryHandler detailsHandler,
-                             GetBidHistoryQueryHandler bidHistoryHandler,
-                             SuspiciousActivityService suspiciousActivityService) {
+                              ListActiveAuctionsQueryHandler listHandler,
+                              GetAuctionDetailsQueryHandler detailsHandler,
+                              GetBidHistoryQueryHandler bidHistoryHandler,
+                              SuspiciousActivityService suspiciousActivityService,
+                              ProxyBidService proxyBidService) {
         this.commandBus = commandBus;
         this.listHandler = listHandler;
         this.detailsHandler = detailsHandler;
         this.bidHistoryHandler = bidHistoryHandler;
         this.suspiciousActivityService = suspiciousActivityService;
+        this.proxyBidService = proxyBidService;
     }
 
     @PostMapping
@@ -80,25 +90,26 @@ public class AuctionController {
             content = @Content(
                 mediaType = "application/json",
                 schema = @Schema(implementation = CreateAuctionRequest.class),
-                examples = @ExampleObject(
-                     value = """
-                     {
-                       "itemId": "123e4567-e89b-12d3-a456-426614174000",
-                       "categoryId": "electronics",
-                       "reservePrice": 100.00,
-                       "buyNowPrice": 500.00,
-                       "startTime": "2023-10-01T10:00:00Z",
-                       "endTime": "2023-10-01T12:00:00Z"
-                     }
-                     """
-                )
+                 examples = @ExampleObject(
+                      value = """
+                      {
+                        "itemId": "123e4567-e89b-12d3-a456-426614174000",
+                        "categoryId": "electronics",
+                        "auctionType": "ENGLISH_OPEN",
+                        "reservePrice": 100.00,
+                        "buyNowPrice": 500.00,
+                        "startTime": "2023-10-01T10:00:00Z",
+                        "endTime": "2023-10-01T12:00:00Z"
+                      }
+                      """
+                 )
             )
         )
         @Valid @RequestBody CreateAuctionRequest request) {
         ItemId itemId = new ItemId(request.getItemId());
         Money reservePrice = new Money(request.getReservePrice());
         Money buyNowPrice = new Money(request.getBuyNowPrice());
-        CreateAuctionCommand cmd = new CreateAuctionCommand(itemId, request.getCategoryId(), reservePrice, buyNowPrice, request.getStartTime(), request.getEndTime(), AntiSnipePolicy.NONE); // Assuming default policy
+        CreateAuctionCommand cmd = new CreateAuctionCommand(itemId, request.getCategoryId(), request.getAuctionType(), reservePrice, buyNowPrice, request.getStartTime(), request.getEndTime(), AntiSnipePolicy.NONE, request.isHiddenReserve()); // Assuming default policy
         commandBus.send(cmd);
         return ResponseEntity.ok().build();
     }
@@ -229,6 +240,157 @@ public class AuctionController {
         addRateLimitHeaders(response, perAuctionLimiter, id);
 
         PlaceBidCommand cmd = new PlaceBidCommand(auctionId, bidderId, amount, idempotencyKey);
+        commandBus.send(cmd);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/proxy-bid")
+    @PreAuthorize("@auctionSecurityService.canBid(#id, authentication.principal)")
+    @Operation(
+        summary = "Set a proxy bid for an auction",
+        description = "Sets a maximum bid amount for automatic bidding on the specified auction."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Proxy bid set successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request or auction not active", content = @Content),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "404", description = "Auction not found", content = @Content)
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<Void> setProxyBid(
+        @PathVariable String id,
+        @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Proxy bid request",
+            required = true,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = PlaceBidRequest.class), // Reuse for simplicity
+                examples = @ExampleObject(
+                    value = """
+                    {
+                      "amount": 200.00
+                    }
+                    """
+                )
+            )
+        )
+        @Valid @RequestBody PlaceBidRequest request) {
+        AuctionId auctionId = new AuctionId(id);
+        UUID userId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Money maxBid = new Money(request.getAmount());
+        proxyBidService.setProxyBid(userId, auctionId, maxBid);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/commits")
+    @PreAuthorize("@auctionSecurityService.canBid(#id, authentication.principal)")
+    @WithSpan("commit-bid")
+    @Operation(
+        summary = "Commit a bid hash for sealed auction",
+        description = "Commits a bid hash for a sealed-bid auction during the bidding phase."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Bid committed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request or auction not in bidding phase", content = @Content),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "404", description = "Auction not found", content = @Content),
+        @ApiResponse(responseCode = "429", description = "Rate limit exceeded", content = @Content)
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<Void> commitBid(
+        @PathVariable String id,
+        @Valid @RequestBody CommitBidRequest request,
+        HttpServletRequest httpRequest,
+        HttpServletResponse response) {
+        AuctionId auctionId = new AuctionId(id);
+        UUID bidderId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        String clientIp = getClientIp(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+
+        // Check for suspicious activity
+        suspiciousActivityService.checkForSuspiciousActivity(bidderId.toString(), clientIp, userAgent, "BID_COMMIT");
+
+        // Rate limits similar to placeBid
+        RateLimiter perUserLimiter = rateLimiterRegistry.rateLimiter("perUser");
+        RateLimiter perIpLimiter = rateLimiterRegistry.rateLimiter("perIp");
+        RateLimiter perAuctionLimiter = rateLimiterRegistry.rateLimiter("perAuction");
+
+        if (!perUserLimiter.acquirePermission(bidderId.toString())) {
+            addRateLimitHeaders(response, perUserLimiter, bidderId.toString());
+            return ResponseEntity.status(429).build();
+        }
+        if (!perIpLimiter.acquirePermission(clientIp)) {
+            addRateLimitHeaders(response, perIpLimiter, clientIp);
+            return ResponseEntity.status(429).build();
+        }
+        if (!perAuctionLimiter.acquirePermission(id)) {
+            addRateLimitHeaders(response, perAuctionLimiter, id);
+            return ResponseEntity.status(429).build();
+        }
+
+        addRateLimitHeaders(response, perUserLimiter, bidderId.toString());
+        addRateLimitHeaders(response, perIpLimiter, clientIp);
+        addRateLimitHeaders(response, perAuctionLimiter, id);
+
+        CommitBidCommand cmd = new CommitBidCommand(auctionId, new BidderId(bidderId), request.getBidHash(), request.getSalt());
+        commandBus.send(cmd);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/reveals")
+    @PreAuthorize("@auctionSecurityService.canBid(#id, authentication.principal)")
+    @WithSpan("reveal-bid")
+    @Operation(
+        summary = "Reveal a bid for sealed auction",
+        description = "Reveals the actual bid amount for a sealed-bid auction during the reveal phase."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Bid revealed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid reveal or auction not in reveal phase", content = @Content),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "404", description = "Auction not found", content = @Content),
+        @ApiResponse(responseCode = "429", description = "Rate limit exceeded", content = @Content)
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<Void> revealBid(
+        @PathVariable String id,
+        @Valid @RequestBody RevealBidRequest request,
+        HttpServletRequest httpRequest,
+        HttpServletResponse response) {
+        AuctionId auctionId = new AuctionId(id);
+        UUID bidderId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        String clientIp = getClientIp(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+
+        // Check for suspicious activity
+        suspiciousActivityService.checkForSuspiciousActivity(bidderId.toString(), clientIp, userAgent, "BID_REVEAL");
+
+        // Rate limits
+        RateLimiter perUserLimiter = rateLimiterRegistry.rateLimiter("perUser");
+        RateLimiter perIpLimiter = rateLimiterRegistry.rateLimiter("perIp");
+        RateLimiter perAuctionLimiter = rateLimiterRegistry.rateLimiter("perAuction");
+
+        if (!perUserLimiter.acquirePermission(bidderId.toString())) {
+            addRateLimitHeaders(response, perUserLimiter, bidderId.toString());
+            return ResponseEntity.status(429).build();
+        }
+        if (!perIpLimiter.acquirePermission(clientIp)) {
+            addRateLimitHeaders(response, perIpLimiter, clientIp);
+            return ResponseEntity.status(429).build();
+        }
+        if (!perAuctionLimiter.acquirePermission(id)) {
+            addRateLimitHeaders(response, perAuctionLimiter, id);
+            return ResponseEntity.status(429).build();
+        }
+
+        addRateLimitHeaders(response, perUserLimiter, bidderId.toString());
+        addRateLimitHeaders(response, perIpLimiter, clientIp);
+        addRateLimitHeaders(response, perAuctionLimiter, id);
+
+        Money amount = new Money(request.getAmount());
+        RevealBidCommand cmd = new RevealBidCommand(auctionId, new BidderId(bidderId), amount, request.getSalt());
         commandBus.send(cmd);
         return ResponseEntity.ok().build();
     }
@@ -390,6 +552,53 @@ public class AuctionController {
             return xForwardedFor.split(",")[0].trim();
         }
         return request.getRemoteAddr();
+    }
+
+    @PostMapping("/{id}/offers")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+        summary = "Make an offer on auction",
+        description = "Allows a buyer to make an offer on an auction that has closed without meeting reserve."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Offer created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "404", description = "Auction not found", content = @Content)
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<Void> makeOffer(
+        @PathVariable String id,
+        @Valid @RequestBody MakeOfferRequest request) {
+        // Assume userId from security context
+        String userId = "user-from-context"; // TODO: get from auth
+        AuctionId auctionId = new AuctionId(id);
+        BidderId buyerId = new BidderId(UUID.fromString(userId));
+        // TODO: get sellerId from auction
+        SellerId sellerId = new SellerId(UUID.randomUUID()); // placeholder
+        Money amount = new Money(request.getAmount());
+        MakeOfferCommand cmd = new MakeOfferCommand(auctionId, buyerId, sellerId, amount);
+        commandBus.send(cmd);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @GetMapping("/{id}/offers")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+        summary = "List offers for auction",
+        description = "Lists all offers made on the auction (for seller)."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "List of offers",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = OfferResponse.class))),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "404", description = "Auction not found", content = @Content)
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<List<OfferResponse>> getOffers(@PathVariable String id) {
+        // TODO: implement query handler
+        List<OfferResponse> offers = new ArrayList<>();
+        return ResponseEntity.ok(offers);
     }
 
     private void addRateLimitHeaders(HttpServletResponse response, RateLimiter limiter, String key) {

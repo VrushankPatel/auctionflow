@@ -1,5 +1,7 @@
 package com.auctionflow.api.dtos;
 
+import com.auctionflow.core.domain.valueobjects.AuctionType;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import javax.validation.Valid;
@@ -11,8 +13,11 @@ public class CreateAuctionRequest {
     private String itemId;
     @NotNull
     private String categoryId;
+    @NotNull
+    private AuctionType auctionType;
     private BigDecimal reservePrice;
     private BigDecimal buyNowPrice;
+    private boolean hiddenReserve;
     @NotNull
     private Instant startTime;
     @NotNull
@@ -26,11 +31,17 @@ public class CreateAuctionRequest {
     public String getCategoryId() { return categoryId; }
     public void setCategoryId(String categoryId) { this.categoryId = categoryId; }
 
+    public AuctionType getAuctionType() { return auctionType; }
+    public void setAuctionType(AuctionType auctionType) { this.auctionType = auctionType; }
+
     public BigDecimal getReservePrice() { return reservePrice; }
     public void setReservePrice(BigDecimal reservePrice) { this.reservePrice = reservePrice; }
 
     public BigDecimal getBuyNowPrice() { return buyNowPrice; }
     public void setBuyNowPrice(BigDecimal buyNowPrice) { this.buyNowPrice = buyNowPrice; }
+
+    public boolean isHiddenReserve() { return hiddenReserve; }
+    public void setHiddenReserve(boolean hiddenReserve) { this.hiddenReserve = hiddenReserve; }
 
     public Instant getStartTime() { return startTime; }
     public void setStartTime(Instant startTime) { this.startTime = startTime; }

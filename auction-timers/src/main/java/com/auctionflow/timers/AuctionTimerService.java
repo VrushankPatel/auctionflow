@@ -1,5 +1,6 @@
 package com.auctionflow.timers;
 
+import com.auctionflow.core.domain.commands.ReducePriceCommand;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.events.EventStore;
 import com.auctionflow.events.publisher.KafkaEventPublisher;
@@ -125,6 +126,34 @@ public class AuctionTimerService {
 
         // Schedule new timer
         scheduleAuctionClose(auctionId, newEndTime);
+    }
+
+    /**
+     * Schedules periodic price reductions for a Dutch auction.
+     *
+     * @param auctionId the auction ID
+     * @param intervalMillis the reduction interval in milliseconds
+     * @param endTime the auction end time
+     */
+    public void schedulePriceReductions(AuctionId auctionId, long intervalMillis, Instant endTime) {
+        schedulingExecutor.submit(() -> {
+            try {
+                Instant now = Instant.now();
+                Instant nextReduction = now.plusMillis(intervalMillis);
+                while (nextReduction.isBefore(endTime)) {
+                    long delay = nextReduction.toEpochMilli() - now.toEpochMilli();
+                    if (delay > 0) {
+                        PriceReductionTask task = new PriceReductionTask(auctionId, eventStore, eventPublisher, redissonClient, durableScheduler, timerMetrics);
+                        Timeout timeout = timingWheel.schedule(task, delay);
+                        // For simplicity, not tracking all reductions, but could add to activeTimers with key
+                        logger.info("Scheduled price reduction for auction {} at {}", auctionId, nextReduction);
+                    }
+                    nextReduction = nextReduction.plusMillis(intervalMillis);
+                }
+            } catch (Exception e) {
+                logger.error("Error scheduling price reductions for auction {}", auctionId, e);
+            }
+        });
     }
 
     /**

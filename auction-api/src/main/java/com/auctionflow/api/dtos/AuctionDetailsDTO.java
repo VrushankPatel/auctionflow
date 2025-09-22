@@ -14,9 +14,27 @@ public class AuctionDetailsDTO {
     private Instant endTs;
     private BigDecimal reservePrice;
     private BigDecimal buyNowPrice;
+    private boolean hiddenReserve;
     private BigDecimal currentHighestBid;
     private String highestBidderId;
     private Instant lastBidTs;
+
+    public AuctionDetailsDTO(String auctionId, String itemId, String sellerId, String title, String description, String status, Instant startTs, Instant endTs, BigDecimal reservePrice, BigDecimal buyNowPrice, boolean hiddenReserve, BigDecimal currentHighestBid, String highestBidderId, Instant lastBidTs) {
+        this.auctionId = auctionId;
+        this.itemId = itemId;
+        this.sellerId = sellerId;
+        this.title = title;
+        this.description = description;
+        this.status = status;
+        this.startTs = startTs;
+        this.endTs = endTs;
+        this.reservePrice = reservePrice;
+        this.buyNowPrice = buyNowPrice;
+        this.hiddenReserve = hiddenReserve;
+        this.currentHighestBid = currentHighestBid;
+        this.highestBidderId = highestBidderId;
+        this.lastBidTs = lastBidTs;
+    }
 
     // getters and setters
     public String getAuctionId() { return auctionId; }
@@ -48,6 +66,9 @@ public class AuctionDetailsDTO {
 
     public BigDecimal getBuyNowPrice() { return buyNowPrice; }
     public void setBuyNowPrice(BigDecimal buyNowPrice) { this.buyNowPrice = buyNowPrice; }
+
+    public boolean isHiddenReserve() { return hiddenReserve; }
+    public void setHiddenReserve(boolean hiddenReserve) { this.hiddenReserve = hiddenReserve; }
 
     public BigDecimal getCurrentHighestBid() { return currentHighestBid; }
     public void setCurrentHighestBid(BigDecimal currentHighestBid) { this.currentHighestBid = currentHighestBid; }

@@ -19,6 +19,12 @@ public class GetAuctionDetailsQueryHandler {
 
     @Cacheable(value = "auctionDetails", key = "#query.auctionId")
     public Optional<AuctionDetailsDTO> handle(GetAuctionDetailsQuery query) {
-        return auctionReadRepository.findAuctionDetailsById(query.getAuctionId());
+        Optional<AuctionDetailsDTO> dtoOpt = auctionReadRepository.findAuctionDetailsById(query.getAuctionId());
+        dtoOpt.ifPresent(dto -> {
+            if (dto.isHiddenReserve()) {
+                dto.setReservePrice(null);
+            }
+        });
+        return dtoOpt;
     }
 }

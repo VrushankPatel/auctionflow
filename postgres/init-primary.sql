@@ -253,6 +253,22 @@ CREATE TABLE invoice_items (
 
 CREATE INDEX idx_invoice_items_invoice_id ON invoice_items (invoice_id);
 
+-- Auction templates table
+CREATE TABLE auction_templates (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    creator_id VARCHAR(255) NOT NULL,
+    template_data JSONB NOT NULL,
+    is_public BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_auction_templates_creator_id ON auction_templates (creator_id);
+CREATE INDEX idx_auction_templates_is_public ON auction_templates (is_public);
+CREATE INDEX idx_auction_templates_name_description ON auction_templates USING gin (to_tsvector('english', name || ' ' || description)) WHERE is_public = true;
+
 -- Insert default platform fee: 5%
 INSERT INTO fee_schedules (fee_type, calculation_type, value, active) VALUES ('PLATFORM_FEE', 'PERCENTAGE', 0.05, true);
 

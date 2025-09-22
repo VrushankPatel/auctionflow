@@ -1,5 +1,9 @@
 package com.auctionflow.core.domain.aggregates;
 
+import com.auctionflow.core.domain.valueobjects.AuctionId;
+import com.auctionflow.core.domain.valueobjects.AuctionStatus;
+
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,4 +36,8 @@ public abstract class AggregateRoot {
     public void setExpectedVersion(long expectedVersion) {
         this.expectedVersion = expectedVersion;
     }
+
+    public abstract AuctionId getId();
+    public abstract AuctionStatus getStatus();
+    public abstract Instant getEndTime();
 }

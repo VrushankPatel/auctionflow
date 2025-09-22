@@ -1,10 +1,16 @@
 package com.auctionflow.timers;
 
+import com.auctionflow.core.domain.aggregates.AggregateRoot;
 import com.auctionflow.core.domain.aggregates.AuctionAggregate;
+import com.auctionflow.core.domain.aggregates.DutchAuctionAggregate;
 import com.auctionflow.core.domain.commands.CloseAuctionCommand;
+import com.auctionflow.core.domain.commands.StartRevealPhaseCommand;
+import com.auctionflow.core.domain.events.AuctionCreatedEvent;
+import com.auctionflow.core.domain.events.AuctionRevealPhaseStartedEvent;
 import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.AuctionStatus;
+import com.auctionflow.core.domain.valueobjects.AuctionType;
 import com.auctionflow.events.EventStore;
 import com.auctionflow.events.publisher.KafkaEventPublisher;
 import io.micrometer.core.instrument.Timer;
@@ -64,11 +70,23 @@ public class AuctionCloseTask implements TimerTask {
                 return;
             }
 
-            AuctionAggregate aggregate = new AuctionAggregate(events);
+            AuctionType type = events.stream()
+                .filter(e -> e instanceof AuctionCreatedEvent)
+                .map(e -> ((AuctionCreatedEvent) e).getAuctionType())
+                .findFirst()
+                .orElse(AuctionType.ENGLISH_OPEN);
+            AggregateRoot aggregate;
+            if (type == AuctionType.DUTCH) {
+                aggregate = new DutchAuctionAggregate(events);
+            } else {
+                aggregate = new AuctionAggregate(events);
+            }
 
-            // Check if auction is still open
-            if (aggregate.getStatus() != AuctionStatus.OPEN) {
-                logger.info("Auction {} is already closed or not open, status: {}", auctionId, aggregate.getStatus());
+            // Check if auction is still open or in phases
+            if (aggregate.getStatus() != AuctionStatus.OPEN &&
+                aggregate.getStatus() != AuctionStatus.SEALED_BIDDING &&
+                aggregate.getStatus() != AuctionStatus.REVEAL_PHASE) {
+                logger.info("Auction {} is already closed or not active, status: {}", auctionId, aggregate.getStatus());
                 return;
             }
 
@@ -82,9 +100,14 @@ public class AuctionCloseTask implements TimerTask {
             long delayMs = now.toEpochMilli() - aggregate.getEndTime().toEpochMilli();
             timerMetrics.recordTimerAccuracy(delayMs);
 
-            // Determine winner and close auction
-            CloseAuctionCommand command = new CloseAuctionCommand(auctionId);
-            aggregate.handle(command);
+            // Handle based on type and status
+            if (type == AuctionType.SEALED_BID && aggregate.getStatus() == AuctionStatus.SEALED_BIDDING) {
+                StartRevealPhaseCommand command = new StartRevealPhaseCommand(auctionId);
+                aggregate.handle(command);
+            } else {
+                CloseAuctionCommand command = new CloseAuctionCommand(auctionId);
+                aggregate.handle(command);
+            }
 
             List<DomainEvent> newEvents = aggregate.getDomainEvents();
             if (!newEvents.isEmpty()) {
@@ -94,9 +117,17 @@ public class AuctionCloseTask implements TimerTask {
                 // Publish events
                 for (DomainEvent event : newEvents) {
                     eventPublisher.publish(event);
+                    // If reveal phase started, schedule close for reveal end
+                    if (event instanceof AuctionRevealPhaseStartedEvent revealEvent) {
+                        durableScheduler.scheduleAuctionClose(auctionId, revealEvent.getRevealEndTime());
+                    }
                 }
 
-                logger.info("Successfully closed auction {} with winner {}", auctionId, aggregate.getWinnerId());
+                if (aggregate.getStatus() == AuctionStatus.CLOSED) {
+                    logger.info("Successfully closed auction {} with winner {}", auctionId, aggregate.getWinnerId());
+                } else {
+                    logger.info("Started reveal phase for auction {}", auctionId);
+                }
                 durableScheduler.markJobCompleted(jobId);
             } else {
                 logger.warn("No events generated for closing auction {}", auctionId);
