@@ -11,7 +11,7 @@ public class AuctionRevealPhaseStartedEvent extends DomainEvent {
 
     public AuctionRevealPhaseStartedEvent(AuctionId auctionId, Instant revealEndTime,
                                           UUID eventId, Instant timestamp, long sequenceNumber) {
-        super(eventId, timestamp, sequenceNumber);
+        super(auctionId, eventId, timestamp, sequenceNumber);
         this.auctionId = auctionId;
         this.revealEndTime = revealEndTime;
     }

@@ -17,7 +17,7 @@ public class BidQueue {
 
     public BidQueue() {
         this.queue = new PriorityBlockingQueue<>(11, Comparator
-                .comparing(Bid::amount, Comparator.reverseOrder()) // higher amount first
+                .comparing((Bid b) -> b.amount().amount(), Comparator.reverseOrder()) // higher amount first
                 .thenComparing(Bid::seqNo)); // lower seqNo first for same amount
     }
 

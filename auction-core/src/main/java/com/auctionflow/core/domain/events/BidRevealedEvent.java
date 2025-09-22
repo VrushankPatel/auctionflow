@@ -16,7 +16,7 @@ public class BidRevealedEvent extends DomainEvent {
 
     public BidRevealedEvent(AuctionId auctionId, BidderId bidderId, Money amount, String salt, boolean valid,
                             UUID eventId, Instant timestamp, long sequenceNumber) {
-        super(eventId, timestamp, sequenceNumber);
+        super(auctionId, eventId, timestamp, sequenceNumber);
         this.auctionId = auctionId;
         this.bidderId = bidderId;
         this.amount = amount;

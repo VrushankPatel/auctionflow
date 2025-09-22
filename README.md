@@ -34,7 +34,10 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 - **Proper Bid Increment Strategy**: Proxy bidding uses configurable bid increment strategies instead of hardcoded values for accurate minimum bid calculations.
 - **Precise Anti-Snipe Timing**: Anti-snipe extensions use bid command's server timestamp for accurate timing, preventing approximation errors.
 - **Asynchronous Processing**: Bid placement is asynchronous with immediate response; proxy and automated bidding decoupled to maintain low latency via async execution.
-- **Adaptive Batched Bid Processing**: Processes all queued bids up to a maximum limit (100) in high-frequency scenarios, with adaptive batch sizing based on queue load to balance throughput and latency.
+- **Adaptive Batched Bid Processing**: Processes queued bids with adaptive batch sizing based on queue load (1-20 bids per batch) to balance latency and throughput in high-frequency scenarios.
+- **Optimized Bid Queue Comparator**: Uses BigDecimal-based comparison for Money amounts in priority queue to ensure correct price-time priority ordering.
+- **Thread Safety Enforcement**: Single-writer per auction enforced via sharding; concurrent access prevented at command bus level.
+- **Enhanced Money Utilities**: Added ZERO constant and divide method for efficient calculations in bid increments and Dutch auctions.
 - **Fine-Grained Locking**: Separate lock keys for proxy bidding ("auction:proxy:") to reduce contention with main bid processing.
 - **High Throughput**: Supports 10,000+ bids/sec through optimized aggregate reconstruction and event-driven architecture.
 - **Error Handling**: Proper exception handling in bid placement for accurate acceptance status.

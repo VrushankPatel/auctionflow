@@ -12,7 +12,7 @@ public class ProxyBidOutbidEvent extends DomainEvent {
     private final String reason;
 
     public ProxyBidOutbidEvent(AuctionId auctionId, UUID userId, String reason, UUID eventId, Instant timestamp, long sequenceNumber) {
-        super(eventId, auctionId, timestamp, sequenceNumber);
+        super(auctionId, eventId, timestamp, sequenceNumber);
         this.auctionId = auctionId;
         this.userId = userId;
         this.reason = reason;

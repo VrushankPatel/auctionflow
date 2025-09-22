@@ -18,6 +18,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * AuctionAggregate handles bid processing for high-frequency auctions.
+ * Thread safety: Assumes single-writer per auction instance via sharding on auctionId.
+ * Concurrent access to the same auction is not supported and must be prevented at the command bus level.
+ */
 public class AuctionAggregate extends AggregateRoot {
     // Pool BidValidator instances to reduce allocation in hot paths
     private static final ObjectPool<BidValidator> BID_VALIDATOR_POOL = new ObjectPool<>(10, 100, BidValidator::new);
@@ -214,8 +219,8 @@ public class AuctionAggregate extends AggregateRoot {
         } finally {
             BID_VALIDATOR_POOL.release(validator);
         }
-        // Use bid queue for efficient processing and ordering
-        Bid bid = new Bid(new BidderId(command.bidderId()), command.amount(), serverTs, seqNo);
+        // Use bid queue for efficient processing and ordering with pooled Bid objects
+        Bid bid = Bid.create(new BidderId(command.bidderId()), command.amount(), serverTs, seqNo);
         bidQueue.addBid(bid);
         processQueuedBids();
     }
@@ -241,12 +246,13 @@ public class AuctionAggregate extends AggregateRoot {
     }
 
     /**
-     * Processes all queued bids in price-time priority order to ensure immediate processing in high-frequency scenarios.
+     * Processes queued bids in price-time priority order using adaptive batch sizing for balanced latency and throughput.
      * Emits BidPlacedEvent for each bid and checks for reserve met.
-     * Limited to maximum batch size to prevent excessive processing.
+     * Adaptive batch size prevents excessive processing in one call while allowing catch-up in high-frequency scenarios.
      */
     private void processQueuedBids() {
-        int maxBatchSize = 100; // Maximum bids to process in one call to prevent blocking
+        int queueSize = bidQueue.size();
+        int maxBatchSize = calculateAdaptiveBatchSize(queueSize); // Adaptive batch size based on queue load
         int processed = 0;
         while (!bidQueue.isEmpty() && processed < maxBatchSize) {
             Bid bid = bidQueue.pollHighestBid();
@@ -266,6 +272,8 @@ public class AuctionAggregate extends AggregateRoot {
                     addDomainEvent(reserveEvent);
                 }
                 processed++;
+                // Release pooled Bid object after processing
+                Bid.release(bid);
             }
         }
     }
@@ -297,9 +305,9 @@ public class AuctionAggregate extends AggregateRoot {
         if (auctionType == AuctionType.SEALED_BID) {
             // For sealed bid, winner from revealed bids: higher amount, then lower seqNo (earlier commit)
             winner = revealedBids.stream()
-                    .max(Comparator.comparing(Bid::amount)
+                    .max(Comparator.comparing((Bid b) -> b.amount().amount(), Comparator.reverseOrder())
                             .thenComparing(Bid::seqNo))
-                    .map(bid -> new WinnerId(bid.bidderId()))
+                    .map(bid -> new WinnerId(bid.bidderId().id()))
                     .orElse(null);
         } else {
             winner = highestBidderId != null ? new WinnerId(highestBidderId) : null;
@@ -332,7 +340,7 @@ public class AuctionAggregate extends AggregateRoot {
 
     @EventHandler
     public void apply(BidPlacedEvent event) {
-        Bid bid = new Bid(new BidderId(event.getBidderId()), event.getAmount(), event.getTimestamp(), event.getSeqNo());
+        Bid bid = Bid.create(new BidderId(event.getBidderId()), event.getAmount(), event.getTimestamp(), event.getSeqNo());
         this.bids.add(bid);
         // Price-time priority: higher bid amount takes precedence.
         // For equal amounts, lower sequence number (earlier arrival) wins.
@@ -367,7 +375,12 @@ public class AuctionAggregate extends AggregateRoot {
     @EventHandler
     public void apply(BidRevealedEvent event) {
         if (event.isValid()) {
-            Bid bid = new Bid(event.getBidderId(), event.getAmount(), event.getTimestamp());
+            // Find the commit seqNo for proper ordering in sealed bids
+            Optional<SealedBidCommit> commitOpt = commits.stream()
+                    .filter(c -> c.getBidderId().equals(event.getBidderId()))
+                    .findFirst();
+            long seqNo = commitOpt.map(SealedBidCommit::getSeqNo).orElse(0L);
+            Bid bid = Bid.create(event.getBidderId(), event.getAmount(), event.getTimestamp(), seqNo);
             this.revealedBids.add(bid);
         }
     }

@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.util.Currency;
 
 public record Money(BigDecimal amount, Currency currency) {
+    public static final Money ZERO = new Money(BigDecimal.ZERO, Currency.getInstance("USD"));
+
     public Money {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Amount must be non-negative");
@@ -47,6 +49,10 @@ public record Money(BigDecimal amount, Currency currency) {
 
     public Money multiply(BigDecimal factor) {
         return new Money(amount.multiply(factor), currency);
+    }
+
+    public Money divide(int divisor) {
+        return new Money(amount.divide(BigDecimal.valueOf(divisor)), currency);
     }
 
     public boolean isLessThan(Money other) {

@@ -81,6 +81,7 @@ public class DutchAuctionAggregate extends AggregateRoot {
             command.startTime(),
             command.endTime(),
             command.antiSnipePolicy(),
+            false, // hiddenReserve
             eventId,
             timestamp,
             sequenceNumber

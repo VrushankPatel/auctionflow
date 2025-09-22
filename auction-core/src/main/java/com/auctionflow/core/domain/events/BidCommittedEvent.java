@@ -15,7 +15,7 @@ public class BidCommittedEvent extends DomainEvent {
 
     public BidCommittedEvent(AuctionId auctionId, BidderId bidderId, String bidHash, String salt,
                              long commitSeqNo, UUID eventId, Instant timestamp, long sequenceNumber) {
-        super(eventId, timestamp, sequenceNumber);
+        super(auctionId, eventId, timestamp, sequenceNumber);
         this.auctionId = auctionId;
         this.bidderId = bidderId;
         this.bidHash = bidHash;
