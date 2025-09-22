@@ -1,13 +1,59 @@
 # Default values for auction-api.
 replicaCount: 1
 
-# Infrastructure dependencies
+# Multi-region configuration
+global:
+  region: us-east-1  # Default region, override per deployment
+  regions:
+    - us-east-1
+    - eu-west-1
+    - ap-southeast-1
+  geoRouting:
+    enabled: true
+    provider: aws-global-accelerator  # Options: aws-global-accelerator, cloudflare
+    latencyBased: true
+  failover:
+    enabled: true
+    healthCheckPath: /actuator/health
+    unhealthyThreshold: 3
+  dataSovereignty:
+    enabled: true
+    euRegions:
+      - eu-west-1
+    gdprCompliant: true
+
+# Infrastructure dependencies (global across regions)
 postgresql:
   enabled: true
+  globalDatabase: true  # Enable Aurora Global Database
+  primaryRegion: us-east-1
+  secondaryRegions:
+    - eu-west-1
+    - ap-southeast-1
+  host: postgres-primary  # Override per region
+  port: 5432
+  database: auctiondb
+  username: auctionuser
+  password: auctionpass
 redis:
   enabled: true
+  globalDatastore: true  # Enable ElastiCache Global Datastore
+  primaryRegion: us-east-1
+  secondaryRegions:
+    - eu-west-1
+    - ap-southeast-1
+  host: redis-1  # Override per region
+  port: 6379
+  password: ""
+  clusterNodes: "redis-1:6379,redis-2:6379"
 kafka:
   enabled: true
+  crossRegionReplication: true  # Enable MSK cross-region replication
+  regions:
+    - us-east-1
+    - eu-west-1
+    - ap-southeast-1
+  bootstrapServers: "kafka-1:9092"  # Override per region
 
 image:
   repository: auctionflow/auction-api
@@ -34,6 +80,26 @@ hpa:
 
 config:
   spring:
+    datasource:
+      url: jdbc:postgresql://${POSTGRES_HOST:postgres-primary}:${POSTGRES_PORT:5432}/${POSTGRES_DB}
+      username: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+      driver-class-name: org.postgresql.Driver
+    data:
+      redis:
+        host: ${REDIS_HOST:redis-1}
+        port: ${REDIS_PORT:6379}
+        password: ${REDIS_PASSWORD}
+        cluster:
+          nodes: ${REDIS_CLUSTER_NODES}
+    kafka:
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka-1:9092}
+      producer:
+        acks: all
+        retries: 3
+      consumer:
+        group-id: auction-api
+        auto-offset-reset: earliest
     security:
       oauth2:
         client:

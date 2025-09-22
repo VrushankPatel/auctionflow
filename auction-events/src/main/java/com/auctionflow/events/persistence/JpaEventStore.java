@@ -7,6 +7,7 @@ import com.auctionflow.events.EventStore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -49,6 +50,31 @@ public class JpaEventStore implements EventStore {
     public List<DomainEvent> getEventsAfter(AuctionId aggregateId, long sequenceNumber) {
         return eventRepository.findByAggregateIdAndSequenceNumberGreaterThanOrderBySequenceNumberAsc(
                         aggregateId.value().toString(), sequenceNumber)
+                .stream()
+                .map(this::toDomainEvent)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<DomainEvent> getEventsFromTimestamp(Instant fromTimestamp) {
+        return eventRepository.findByTimestampGreaterThanEqualOrderByTimestampAscSequenceNumberAsc(fromTimestamp)
+                .stream()
+                .map(this::toDomainEvent)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<DomainEvent> getEventsForAggregateFromTimestamp(AuctionId aggregateId, Instant fromTimestamp) {
+        return eventRepository.findByAggregateIdAndTimestampGreaterThanEqualOrderByTimestampAscSequenceNumberAsc(
+                        aggregateId.value().toString(), fromTimestamp)
+                .stream()
+                .map(this::toDomainEvent)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<DomainEvent> getEventsByTimestampRange(Instant fromTimestamp, Instant toTimestamp) {
+        return eventRepository.findByTimestampBetweenOrderByTimestampAscSequenceNumberAsc(fromTimestamp, toTimestamp)
                 .stream()
                 .map(this::toDomainEvent)
                 .collect(Collectors.toList());

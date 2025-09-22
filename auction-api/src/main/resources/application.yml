@@ -83,10 +83,34 @@ management:
      jaeger:
        endpoint: http://localhost:14268/api/traces
 
-gdpr:
-  retention:
-    softDeleteDays: 30
-  consents:
-    types:
-      - general
-      - dataProcessing
+ gdpr:
+   retention:
+     softDeleteDays: 30
+   consents:
+     types:
+       - general
+       - dataProcessing
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 60s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+        recordExceptions:
+          - org.springframework.web.client.RestClientException
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+        ignoreExceptions:
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
+    instances:
+      webhookService:
+        baseConfig: default
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 60

@@ -36,13 +36,42 @@ management:
       prometheus:
         enabled: true
 
-otel:
-  service:
-    name: auction-analytics
-  traces:
-    exporter: jaeger
-    sampler: parentbased_always_on
-    sampler.arg: 0.1
-  exporter:
-    jaeger:
-      endpoint: http://localhost:14268/api/traces
+ otel:
+   service:
+     name: auction-analytics
+   traces:
+     exporter: jaeger
+     sampler: parentbased_always_on
+     sampler.arg: 0.1
+   exporter:
+     jaeger:
+       endpoint: http://localhost:14268/api/traces
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 60s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+        recordExceptions:
+          - org.springframework.web.reactive.function.client.WebClientException
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+        ignoreExceptions:
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
+    instances:
+      mlService:
+        baseConfig: default
+        waitDurationInOpenState: 45s
+        failureRateThreshold: 70
+  bulkhead:
+    instances:
+      mlService:
+        maxConcurrentCalls: 5
+        maxWaitDuration: 10ms

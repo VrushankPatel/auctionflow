@@ -51,26 +51,31 @@ public class AuctionAggregate extends AggregateRoot {
     public AuctionAggregate(List<DomainEvent> events) {
         this();
         for (DomainEvent event : events) {
-            if (event instanceof AuctionCreatedEvent) {
-                apply((AuctionCreatedEvent) event);
-            } else if (event instanceof BidPlacedEvent) {
-                apply((BidPlacedEvent) event);
-            } else if (event instanceof BidCommittedEvent) {
-                apply((BidCommittedEvent) event);
-            } else if (event instanceof BidRevealedEvent) {
-                apply((BidRevealedEvent) event);
-            } else if (event instanceof AuctionRevealPhaseStartedEvent) {
-                apply((AuctionRevealPhaseStartedEvent) event);
-            } else if (event instanceof AuctionExtendedEvent) {
-                apply((AuctionExtendedEvent) event);
-            } else if (event instanceof AuctionClosedEvent) {
-                apply((AuctionClosedEvent) event);
-            } else if (event instanceof ReserveMetEvent) {
-                apply((ReserveMetEvent) event);
-            }
+            apply(event);
         }
         this.version = events.size();
         this.expectedVersion = this.version;
+    }
+
+    public void apply(DomainEvent event) {
+        if (event instanceof AuctionCreatedEvent) {
+            apply((AuctionCreatedEvent) event);
+        } else if (event instanceof BidPlacedEvent) {
+            apply((BidPlacedEvent) event);
+        } else if (event instanceof BidCommittedEvent) {
+            apply((BidCommittedEvent) event);
+        } else if (event instanceof BidRevealedEvent) {
+            apply((BidRevealedEvent) event);
+        } else if (event instanceof AuctionRevealPhaseStartedEvent) {
+            apply((AuctionRevealPhaseStartedEvent) event);
+        } else if (event instanceof AuctionExtendedEvent) {
+            apply((AuctionExtendedEvent) event);
+        } else if (event instanceof AuctionClosedEvent) {
+            apply((AuctionClosedEvent) event);
+        } else if (event instanceof ReserveMetEvent) {
+            apply((ReserveMetEvent) event);
+        }
+        // Add more event types as needed
     }
 
     public void handle(CreateAuctionCommand command) {

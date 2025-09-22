@@ -64,13 +64,47 @@ management:
     liveness-state:
       enabled: true
 
-otel:
-  service:
-    name: auction-notifications
-  traces:
-    exporter: jaeger
-    sampler: parentbased_always_on
-    sampler.arg: 0.1
-  exporter:
-    jaeger:
-      endpoint: http://localhost:14268/api/traces
+ otel:
+   service:
+     name: auction-notifications
+   traces:
+     exporter: jaeger
+     sampler: parentbased_always_on
+     sampler.arg: 0.1
+   exporter:
+     jaeger:
+       endpoint: http://localhost:14268/api/traces
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 60s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+        recordExceptions:
+          - java.io.IOException
+          - java.util.concurrent.ExecutionException
+          - com.google.firebase.messaging.FirebaseMessagingException
+          - java.lang.InterruptedException
+        ignoreExceptions:
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
+    instances:
+      fcmService:
+        baseConfig: default
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 60
+      apnsService:
+        baseConfig: default
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 60
+  bulkhead:
+    instances:
+      pushService:
+        maxConcurrentCalls: 20
+        maxWaitDuration: 100ms

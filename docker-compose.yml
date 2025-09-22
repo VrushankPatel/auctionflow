@@ -1,16 +1,18 @@
 version: '3.8'
 
 services:
-  postgres-primary:
-    image: postgres:15
-    container_name: postgres-primary
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_primary_data:/var/lib/postgresql/data
-      - ./postgres/init-primary.sql:/docker-entrypoint-initdb.d/init.sql
+   postgres-primary:
+     image: postgres:15
+     container_name: postgres-primary
+     environment:
+       POSTGRES_DB: ${POSTGRES_DB}
+       POSTGRES_USER: ${POSTGRES_USER}
+       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+     volumes:
+       - postgres_primary_data:/var/lib/postgresql/data
+       - ./postgres/init-primary.sql:/docker-entrypoint-initdb.d/init.sql
+       - ./postgres/postgresql-primary.conf:/etc/postgresql/postgresql.conf
+       - postgres_archive:/var/lib/postgresql/archive
     ports:
       - "5432:5432"
     networks:
@@ -289,8 +291,9 @@ networks:
   monitoring:
 
 volumes:
-  postgres_primary_data:
-  postgres_replica_data:
+   postgres_primary_data:
+   postgres_replica_data:
+   postgres_archive:
   redis1_data:
   redis2_data:
   redis3_data:
