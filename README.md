@@ -26,6 +26,8 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 - **Efficient Highest Bid Tracking**: Maintains current highest bid in aggregate state for O(1) lookups, avoiding O(n) scans of bid history.
 - **Fair Ordering**: Uses sequence numbers for price-time priority, with tie-breaking by sequence number for simultaneous bids.
 - **Bid Validation with Increments**: Integrated BidValidator enforces minimum bid increments and reserve prices for fair bidding.
+- **Bid Queue Management**: Uses priority queue for efficient bid ordering and processing, ensuring price-time priority with O(log n) insertion and O(1) peek operations.
+- **Optimized Price-Time Priority Logic**: Refactored bid comparison logic with dedicated method for clarity and performance in determining highest priority bids.
 - **Thread Safety**: Distributed locks per auction prevent race conditions; optimistic concurrency with retries ensures consistency.
 - **Zero-Allocation Hot Paths**: Minimizes object creation in bid validation and event emission; reuses command data to reduce GC pressure.
 - **Asynchronous Processing**: Bid placement is asynchronous with immediate response; proxy and automated bidding decoupled to maintain low latency.
