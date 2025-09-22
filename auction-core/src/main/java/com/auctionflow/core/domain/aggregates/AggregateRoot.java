@@ -6,6 +6,7 @@ import java.util.List;
 public abstract class AggregateRoot {
     protected final List<Object> domainEvents = new ArrayList<>();
     protected long version = 0;
+    protected long expectedVersion = 0;
 
     protected void addDomainEvent(Object event) {
         domainEvents.add(event);
@@ -22,5 +23,13 @@ public abstract class AggregateRoot {
 
     public long getVersion() {
         return version;
+    }
+
+    public long getExpectedVersion() {
+        return expectedVersion;
+    }
+
+    public void setExpectedVersion(long expectedVersion) {
+        this.expectedVersion = expectedVersion;
     }
 }

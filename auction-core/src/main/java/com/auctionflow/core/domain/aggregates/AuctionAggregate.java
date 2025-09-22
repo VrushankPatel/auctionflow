@@ -2,6 +2,7 @@ package com.auctionflow.core.domain.aggregates;
 
 import com.auctionflow.core.domain.commands.*;
 import com.auctionflow.core.domain.events.*;
+import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.core.domain.valueobjects.*;
 
 import java.time.Instant;
@@ -25,6 +26,23 @@ public class AuctionAggregate extends AggregateRoot {
     public AuctionAggregate() {
         this.bids = new ArrayList<>();
         this.status = AuctionStatus.CREATED;
+    }
+
+    public AuctionAggregate(List<DomainEvent> events) {
+        this();
+        for (DomainEvent event : events) {
+            if (event instanceof AuctionCreatedEvent) {
+                apply((AuctionCreatedEvent) event);
+            } else if (event instanceof BidPlacedEvent) {
+                apply((BidPlacedEvent) event);
+            } else if (event instanceof AuctionExtendedEvent) {
+                apply((AuctionExtendedEvent) event);
+            } else if (event instanceof AuctionClosedEvent) {
+                apply((AuctionClosedEvent) event);
+            }
+        }
+        this.version = events.size();
+        this.expectedVersion = this.version;
     }
 
     public void handle(CreateAuctionCommand command) {
@@ -106,7 +124,7 @@ public class AuctionAggregate extends AggregateRoot {
     }
 
     @EventHandler
-    private void apply(AuctionCreatedEvent event) {
+    public void apply(AuctionCreatedEvent event) {
         this.id = event.getAggregateId();
         this.itemId = event.getItemId();
         this.reservePrice = event.getReservePrice();
@@ -117,18 +135,18 @@ public class AuctionAggregate extends AggregateRoot {
     }
 
     @EventHandler
-    private void apply(BidPlacedEvent event) {
+    public void apply(BidPlacedEvent event) {
         Bid bid = new Bid(event.getBidderId(), event.getAmount(), event.getTimestamp());
         this.bids.add(bid);
     }
 
     @EventHandler
-    private void apply(AuctionExtendedEvent event) {
+    public void apply(AuctionExtendedEvent event) {
         this.endTime = event.getNewEndTime();
     }
 
     @EventHandler
-    private void apply(AuctionClosedEvent event) {
+    public void apply(AuctionClosedEvent event) {
         this.status = AuctionStatus.CLOSED;
         this.winnerId = event.getWinnerId();
     }
