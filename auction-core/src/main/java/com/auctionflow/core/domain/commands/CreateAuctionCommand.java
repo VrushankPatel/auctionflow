@@ -6,10 +6,13 @@ import com.auctionflow.core.domain.valueobjects.Money;
 
 import java.time.Instant;
 
-public record CreateAuctionCommand(ItemId itemId, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, AntiSnipePolicy antiSnipePolicy) {
+public record CreateAuctionCommand(ItemId itemId, String categoryId, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, AntiSnipePolicy antiSnipePolicy) {
     public CreateAuctionCommand {
         if (itemId == null) {
             throw new IllegalArgumentException("ItemId cannot be null");
+        }
+        if (categoryId == null || categoryId.isBlank()) {
+            throw new IllegalArgumentException("CategoryId cannot be null or blank");
         }
         if (reservePrice == null) {
             throw new IllegalArgumentException("ReservePrice cannot be null");

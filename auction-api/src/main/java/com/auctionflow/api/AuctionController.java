@@ -8,6 +8,7 @@ import com.auctionflow.api.queries.GetAuctionDetailsQuery;
 import com.auctionflow.api.queries.GetBidHistoryQuery;
 import com.auctionflow.api.queries.ListActiveAuctionsQuery;
 import com.auctionflow.core.domain.commands.*;
+import com.auctionflow.core.domain.valueobjects.AntiSnipePolicy;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.ItemId;
 import com.auctionflow.core.domain.valueobjects.Money;
@@ -74,15 +75,16 @@ public class AuctionController {
                 mediaType = "application/json",
                 schema = @Schema(implementation = CreateAuctionRequest.class),
                 examples = @ExampleObject(
-                    value = """
-                    {
-                      "itemId": "123e4567-e89b-12d3-a456-426614174000",
-                      "reservePrice": 100.00,
-                      "buyNowPrice": 500.00,
-                      "startTime": "2023-10-01T10:00:00Z",
-                      "endTime": "2023-10-01T12:00:00Z"
-                    }
-                    """
+                     value = """
+                     {
+                       "itemId": "123e4567-e89b-12d3-a456-426614174000",
+                       "categoryId": "electronics",
+                       "reservePrice": 100.00,
+                       "buyNowPrice": 500.00,
+                       "startTime": "2023-10-01T10:00:00Z",
+                       "endTime": "2023-10-01T12:00:00Z"
+                     }
+                     """
                 )
             )
         )
@@ -90,7 +92,7 @@ public class AuctionController {
         ItemId itemId = new ItemId(request.getItemId());
         Money reservePrice = new Money(request.getReservePrice());
         Money buyNowPrice = new Money(request.getBuyNowPrice());
-        CreateAuctionCommand cmd = new CreateAuctionCommand(itemId, reservePrice, buyNowPrice, request.getStartTime(), request.getEndTime());
+        CreateAuctionCommand cmd = new CreateAuctionCommand(itemId, request.getCategoryId(), reservePrice, buyNowPrice, request.getStartTime(), request.getEndTime(), AntiSnipePolicy.NONE); // Assuming default policy
         commandBus.send(cmd);
         return ResponseEntity.ok().build();
     }

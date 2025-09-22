@@ -9,6 +9,8 @@ import javax.validation.constraints.NotNull;
 public class CreateAuctionRequest {
     @NotNull
     private String itemId;
+    @NotNull
+    private String categoryId;
     private BigDecimal reservePrice;
     private BigDecimal buyNowPrice;
     @NotNull
@@ -20,6 +22,9 @@ public class CreateAuctionRequest {
 
     public String getItemId() { return itemId; }
     public void setItemId(String itemId) { this.itemId = itemId; }
+
+    public String getCategoryId() { return categoryId; }
+    public void setCategoryId(String categoryId) { this.categoryId = categoryId; }
 
     public BigDecimal getReservePrice() { return reservePrice; }
     public void setReservePrice(BigDecimal reservePrice) { this.reservePrice = reservePrice; }

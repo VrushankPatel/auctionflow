@@ -226,3 +226,20 @@ CREATE INDEX idx_invoice_items_invoice_id ON invoice_items (invoice_id);
 
 -- Insert default platform fee: 5%
 INSERT INTO fee_schedules (fee_type, calculation_type, value, active) VALUES ('PLATFORM_FEE', 'PERCENTAGE', 0.05, true);
+
+-- Audit trail table for comprehensive logging
+CREATE TABLE audit_trail (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT,
+    action VARCHAR(255) NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    ip_address VARCHAR(255),
+    endpoint VARCHAR(255),
+    details TEXT,
+    entity_type VARCHAR(255),
+    entity_id BIGINT
+);
+
+CREATE INDEX idx_audit_trail_user_id ON audit_trail (user_id);
+CREATE INDEX idx_audit_trail_timestamp ON audit_trail (timestamp);
+CREATE INDEX idx_audit_trail_entity_type_id ON audit_trail (entity_type, entity_id);

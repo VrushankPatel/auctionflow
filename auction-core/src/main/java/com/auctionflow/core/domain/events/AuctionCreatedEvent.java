@@ -10,15 +10,17 @@ import java.util.UUID;
 
 public class AuctionCreatedEvent extends DomainEvent {
     private final ItemId itemId;
+    private final String categoryId;
     private final Money reservePrice;
     private final Money buyNowPrice;
     private final Instant startTime;
     private final Instant endTime;
     private final AntiSnipePolicy antiSnipePolicy;
 
-    public AuctionCreatedEvent(AuctionId auctionId, ItemId itemId, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, AntiSnipePolicy antiSnipePolicy, UUID eventId, Instant timestamp, long sequenceNumber) {
+    public AuctionCreatedEvent(AuctionId auctionId, ItemId itemId, String categoryId, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, AntiSnipePolicy antiSnipePolicy, UUID eventId, Instant timestamp, long sequenceNumber) {
         super(auctionId, eventId, timestamp, sequenceNumber);
         this.itemId = itemId;
+        this.categoryId = categoryId;
         this.reservePrice = reservePrice;
         this.buyNowPrice = buyNowPrice;
         this.startTime = startTime;
@@ -52,5 +54,9 @@ public class AuctionCreatedEvent extends DomainEvent {
 
     public AntiSnipePolicy getAntiSnipePolicy() {
         return antiSnipePolicy;
+    }
+
+    public String getCategoryId() {
+        return categoryId;
     }
 }

@@ -61,6 +61,7 @@ public class AuctionAggregate extends AggregateRoot {
         AuctionCreatedEvent event = new AuctionCreatedEvent(
             auctionId,
             command.itemId(),
+            command.categoryId(),
             command.reservePrice(),
             command.buyNowPrice(),
             command.startTime(),
