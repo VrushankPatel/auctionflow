@@ -16,9 +16,10 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 
 ## Performance Targets
 
-- **Bid Latency**: <100ms p99 response time for bid acceptance (optimized with aggregate caching and zero-allocation hot paths).
-- **Throughput**: 10,000 bids per second sustained (improved with adaptive batch processing and efficient priority queues).
-- **Concurrency**: Support for 1 million concurrent watchers.
+- **Bid Latency**: <10ms average, <100ms p99 response time for bid acceptance (optimized with aggregate caching, read model caching, and zero-allocation hot paths).
+- **Throughput**: 10,000+ bids per second sustained (improved with adaptive batch processing, efficient priority queues, and async processing).
+- **Concurrency**: Support for 1 million concurrent watchers with real-time notifications.
+- **Query Performance**: O(1) highest bid lookups with pre-computed fields and caching.
 
 ## Recent Optimizations
 
@@ -31,6 +32,17 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 - Implemented adaptive batch processing for bid queues
 - Added search functionality for auctions with full-text search
 - Introduced item management API for complete auction lifecycle
+- Added currentHighestBid fields to Auction entity for O(1) highest bid queries
+- Implemented read model caching with cache eviction on bid placement
+- Added event-driven read model updates for real-time consistency
+- Zero-allocation hot paths with object pooling for BidValidator and Bid objects
+- Server-assigned timestamps and sequence numbers for deterministic ordering
+- Price-time priority with efficient priority queue (PriorityBlockingQueue)
+- Hashed wheel timer for million+ concurrent auction timers
+- Anti-snipe extensions with configurable policies
+- Automated bidding strategies (sniping prevention, optimal timing, budget optimization, reinforcement learning)
+- Real-time notifications via Redis Pub/Sub and Kafka WebSocket gateway
+- CQRS/Event Sourcing for horizontal scalability and audit trails
 
 ## Bid Processing Optimizations
 
