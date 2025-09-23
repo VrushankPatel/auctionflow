@@ -12,6 +12,7 @@ import com.auctionflow.core.domain.events.ProxyBidOutbidEvent;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.AuctionType;
 import com.auctionflow.core.domain.valueobjects.Money;
+import com.auctionflow.events.AggregateCacheService;
 import com.auctionflow.events.EventStore;
 import com.auctionflow.events.persistence.ProxyBidEntity;
 import com.auctionflow.events.persistence.ProxyBidRepository;
@@ -19,8 +20,6 @@ import com.auctionflow.timers.AntiSnipeExtension;
 import com.auctionflow.events.command.AutomatedBiddingService;
 import com.auctionflow.bidding.strategies.BidDecision;
 import com.auctionflow.bidding.strategies.StrategyBidDecision;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -48,21 +47,18 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
     private final AntiSnipeExtension antiSnipeExtension;
     private final ProxyBidRepository proxyBidRepository;
     private final AutomatedBiddingService automatedBiddingService;
-    // In-memory cache for aggregates to avoid reconstruction on every bid
-    private final Cache<AuctionId, AggregateRoot> aggregateCache = Caffeine.newBuilder()
-            .maximumSize(10000) // Adjust based on active auctions
-            .expireAfterWrite(10, TimeUnit.MINUTES) // Expire after inactivity
-            .build();
+    private final AggregateCacheService aggregateCacheService;
     // Scheduled executor for non-blocking retries
     private final ScheduledExecutorService retryExecutor = Executors.newScheduledThreadPool(10);
 
-    public PlaceBidHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient, AntiSnipeExtension antiSnipeExtension, ProxyBidRepository proxyBidRepository, AutomatedBiddingService automatedBiddingService) {
+    public PlaceBidHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient, AntiSnipeExtension antiSnipeExtension, ProxyBidRepository proxyBidRepository, AutomatedBiddingService automatedBiddingService, AggregateCacheService aggregateCacheService) {
         this.eventStore = eventStore;
         this.kafkaTemplate = kafkaTemplate;
         this.redissonClient = redissonClient;
         this.antiSnipeExtension = antiSnipeExtension;
         this.proxyBidRepository = proxyBidRepository;
         this.automatedBiddingService = automatedBiddingService;
+        this.aggregateCacheService = aggregateCacheService;
     }
 
     @Override
@@ -100,7 +96,7 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
     private void processBidWithRetry(PlaceBidCommand command, int attempt, long backoffMs) {
         try {
             // Use cached aggregate if available, otherwise reconstruct from events
-            AggregateRoot aggregate = aggregateCache.getIfPresent(command.auctionId());
+            AggregateRoot aggregate = aggregateCacheService.get(command.auctionId());
             AuctionType type;
             if (aggregate == null) {
                 List<DomainEvent> events = eventStore.getEvents(command.auctionId());
@@ -126,7 +122,7 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
             List<DomainEvent> newEvents = aggregate.getDomainEvents();
             eventStore.save(newEvents, aggregate.getExpectedVersion());
             // Update cache with new version
-            aggregateCache.put(command.auctionId(), aggregate);
+            aggregateCacheService.put(command.auctionId(), aggregate);
             // Publish to Kafka
             for (DomainEvent event : newEvents) {
                 kafkaTemplate.send("auction-events", event.getAggregateId().toString(), event);
@@ -144,7 +140,7 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
                             handleProxyBidding(command.auctionId(), currentAggregate);
                             handleAutomatedBidding(command.auctionId(), currentAggregate);
                             // Update cache with updated aggregate
-                            aggregateCache.put(command.auctionId(), currentAggregate);
+                            aggregateCacheService.put(command.auctionId(), currentAggregate);
                         }
                     } catch (Exception e) {
                         // Log error

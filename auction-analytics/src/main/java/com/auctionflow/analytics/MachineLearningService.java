@@ -4,7 +4,9 @@ import com.auctionflow.analytics.dtos.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -14,6 +16,9 @@ public class MachineLearningService {
 
     @Autowired
     private PricePredictionService pricePredictionService;
+
+    @Autowired
+    private WebClient webClient;
 
     public Mono<PricePredictionResponse> predictPrice(PricePredictionRequest request) {
         return Mono.fromFuture(pricePredictionService.predictPrice(request))

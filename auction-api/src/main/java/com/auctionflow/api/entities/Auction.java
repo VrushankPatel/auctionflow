@@ -12,6 +12,7 @@ public class Auction {
     @Id
     private String id;
     private String itemId;
+    private String sellerId;
     private String status;
     private Instant startTs;
     private Instant endTs;
@@ -27,6 +28,9 @@ public class Auction {
 
     public String getItemId() { return itemId; }
     public void setItemId(String itemId) { this.itemId = itemId; }
+
+    public String getSellerId() { return sellerId; }
+    public void setSellerId(String sellerId) { this.sellerId = sellerId; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

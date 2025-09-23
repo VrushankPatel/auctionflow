@@ -4,6 +4,7 @@ import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.BidderId;
 import com.auctionflow.core.domain.valueobjects.Money;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
@@ -18,7 +19,7 @@ public class ReinforcementLearningStrategy implements BiddingStrategy {
         // TODO: Implement RL model
         // For now, fall back to conservative bidding
 
-        Money maxBid = new Money(params.getDouble("maxBid"));
+        Money maxBid = Money.usd(BigDecimal.valueOf(params.getDouble("maxBid")));
         if (currentHighestBid.isGreaterThanOrEqual(maxBid)) {
             return BidDecision.noBid();
         }
@@ -28,7 +29,7 @@ public class ReinforcementLearningStrategy implements BiddingStrategy {
         long secondsLeft = auctionEndTime.getEpochSecond() - now.getEpochSecond();
         double urgencyFactor = Math.max(0.1, 1.0 - (secondsLeft / 3600.0)); // Higher urgency near end
 
-        Money increment = new Money(params.getDouble("increment") * urgencyFactor);
+        Money increment = Money.usd(BigDecimal.valueOf(params.getDouble("increment") * urgencyFactor));
         Money nextBid = currentHighestBid.add(increment);
         if (nextBid.isGreaterThan(maxBid)) {
             nextBid = maxBid;

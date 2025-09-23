@@ -36,8 +36,8 @@ public class BatchConfig {
 
     @Bean
     public Step dailyAuctionSummaryStep(ItemReader<String> dailyAuctionSummaryReader,
-                                        ItemProcessor<String, ?> dailyAuctionSummaryProcessor,
-                                        ItemWriter<?> dailyAuctionSummaryWriter) {
+                                        ItemProcessor<String, Object> dailyAuctionSummaryProcessor,
+                                        ItemWriter<Object> dailyAuctionSummaryWriter) {
         return stepBuilderFactory.get("dailyAuctionSummaryStep")
                 .<String, Object>chunk(10)
                 .reader(dailyAuctionSummaryReader)
@@ -57,8 +57,8 @@ public class BatchConfig {
 
     @Bean
     public Step sellerPerformanceStep(ItemReader<Seller> sellerPerformanceReader,
-                                      ItemProcessor<Seller, ?> sellerPerformanceProcessor,
-                                      ItemWriter<?> sellerPerformanceWriter) {
+                                      ItemProcessor<Seller, Object> sellerPerformanceProcessor,
+                                      ItemWriter<Object> sellerPerformanceWriter) {
         return stepBuilderFactory.get("sellerPerformanceStep")
                 .<Seller, Object>chunk(10)
                 .reader(sellerPerformanceReader)
@@ -78,8 +78,8 @@ public class BatchConfig {
 
     @Bean
     public Step bidderActivityStep(ItemReader<User> bidderActivityReader,
-                                   ItemProcessor<User, ?> bidderActivityProcessor,
-                                   ItemWriter<?> bidderActivityWriter) {
+                                   ItemProcessor<User, Object> bidderActivityProcessor,
+                                   ItemWriter<Object> bidderActivityWriter) {
         return stepBuilderFactory.get("bidderActivityStep")
                 .<User, Object>chunk(10)
                 .reader(bidderActivityReader)

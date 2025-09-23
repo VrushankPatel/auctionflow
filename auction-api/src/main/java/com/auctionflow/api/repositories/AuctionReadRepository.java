@@ -9,5 +9,5 @@ import java.util.Optional;
 
 public interface AuctionReadRepository {
     Optional<AuctionDetailsDTO> findAuctionDetailsById(String auctionId);
-    Page<ActiveAuctionsDTO.AuctionSummaryDTO> findActiveAuctions(String category, String sellerId, Pageable pageable);
+    Page<ActiveAuctionsDTO.AuctionSummaryDTO> findActiveAuctions(String category, String sellerId, String query, Pageable pageable);
 }

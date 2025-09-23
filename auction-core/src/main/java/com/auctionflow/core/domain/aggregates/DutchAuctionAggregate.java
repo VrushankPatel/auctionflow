@@ -74,6 +74,7 @@ public class DutchAuctionAggregate extends AggregateRoot {
         AuctionCreatedEvent event = new AuctionCreatedEvent(
             auctionId,
             command.itemId(),
+            command.sellerId(),
             command.categoryId(),
             command.auctionType(),
             command.reservePrice(),

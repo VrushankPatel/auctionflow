@@ -4,6 +4,7 @@ import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.BidderId;
 import com.auctionflow.core.domain.valueobjects.Money;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -15,11 +16,11 @@ public class BudgetOptimizationStrategy implements BiddingStrategy {
     @Override
     public BidDecision decideBid(AuctionId auctionId, BidderId bidderId, Money currentHighestBid,
                                 Instant auctionEndTime, StrategyParameters params) {
-        Money totalBudget = new Money(params.getDouble("totalBudget"));
-        Money allocatedBudget = new Money(params.getDouble("allocatedBudget"));
+        Money totalBudget = Money.usd(BigDecimal.valueOf(params.getDouble("totalBudget")));
+        Money allocatedBudget = Money.usd(BigDecimal.valueOf(params.getDouble("allocatedBudget")));
         Integer competingAuctions = params.getInt("competingAuctions");
 
-        Money maxBid = new Money(params.getDouble("maxBid"));
+        Money maxBid = Money.usd(BigDecimal.valueOf(params.getDouble("maxBid")));
         if (currentHighestBid.isGreaterThanOrEqual(maxBid)) {
             return BidDecision.noBid();
         }
@@ -38,7 +39,7 @@ public class BudgetOptimizationStrategy implements BiddingStrategy {
         }
 
         // Bid conservatively
-        Money nextBid = currentHighestBid.add(new Money(1.0));
+        Money nextBid = currentHighestBid.add(Money.usd(BigDecimal.ONE));
         if (nextBid.isGreaterThan(availablePerAuction) || nextBid.isGreaterThan(maxBid)) {
             return BidDecision.noBid();
         }

@@ -5,12 +5,14 @@ import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.AuctionType;
 import com.auctionflow.core.domain.valueobjects.ItemId;
 import com.auctionflow.core.domain.valueobjects.Money;
+import com.auctionflow.core.domain.valueobjects.SellerId;
 
 import java.time.Instant;
 import java.util.UUID;
 
 public class AuctionCreatedEvent extends DomainEvent {
     private final ItemId itemId;
+    private final SellerId sellerId;
     private final String categoryId;
     private final AuctionType auctionType;
     private final Money reservePrice;
@@ -20,9 +22,10 @@ public class AuctionCreatedEvent extends DomainEvent {
     private final AntiSnipePolicy antiSnipePolicy;
     private final boolean hiddenReserve;
 
-    public AuctionCreatedEvent(AuctionId auctionId, ItemId itemId, String categoryId, AuctionType auctionType, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, AntiSnipePolicy antiSnipePolicy, boolean hiddenReserve, UUID eventId, Instant timestamp, long sequenceNumber) {
+    public AuctionCreatedEvent(AuctionId auctionId, ItemId itemId, SellerId sellerId, String categoryId, AuctionType auctionType, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, AntiSnipePolicy antiSnipePolicy, boolean hiddenReserve, UUID eventId, Instant timestamp, long sequenceNumber) {
         super(auctionId, eventId, timestamp, sequenceNumber);
         this.itemId = itemId;
+        this.sellerId = sellerId;
         this.categoryId = categoryId;
         this.auctionType = auctionType;
         this.reservePrice = reservePrice;
@@ -42,6 +45,10 @@ public class AuctionCreatedEvent extends DomainEvent {
 
     public ItemId getItemId() {
         return itemId;
+    }
+
+    public SellerId getSellerId() {
+        return sellerId;
     }
 
     public Money getReservePrice() {

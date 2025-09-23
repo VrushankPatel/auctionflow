@@ -4,6 +4,7 @@ import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.BidderId;
 import com.auctionflow.core.domain.valueobjects.Money;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -18,7 +19,7 @@ public class OptimalTimingStrategy implements BiddingStrategy {
         Instant now = Instant.now();
         Duration timeLeft = Duration.between(now, auctionEndTime);
 
-        Money maxBid = new Money(params.getDouble("maxBid"));
+        Money maxBid = Money.usd(BigDecimal.valueOf(params.getDouble("maxBid")));
         if (currentHighestBid.isGreaterThanOrEqual(maxBid)) {
             return BidDecision.noBid();
         }
@@ -34,8 +35,8 @@ public class OptimalTimingStrategy implements BiddingStrategy {
         }
 
         // Calculate bid amount - jump to discourage others
-        Money increment = new Money(params.getDouble("increment"));
-        Money nextBid = currentHighestBid.add(increment.multiply(2)); // Bid higher to discourage
+        Money increment = Money.usd(BigDecimal.valueOf(params.getDouble("increment")));
+        Money nextBid = currentHighestBid.add(increment.multiply(BigDecimal.valueOf(2))); // Bid higher to discourage
         if (nextBid.isGreaterThan(maxBid)) {
             nextBid = maxBid;
         }

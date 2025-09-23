@@ -169,9 +169,10 @@ public class AuctionController {
         }
 
         ItemId itemId = new ItemId(request.getItemId());
+        SellerId sellerId = new SellerId(user.getId());
         Money reservePrice = new Money(request.getReservePrice());
         Money buyNowPrice = new Money(request.getBuyNowPrice());
-        CreateAuctionCommand cmd = new CreateAuctionCommand(itemId, request.getCategoryId(), request.getAuctionType(), reservePrice, buyNowPrice, request.getStartTime(), request.getEndTime(), AntiSnipePolicy.NONE, request.isHiddenReserve()); // Assuming default policy
+        CreateAuctionCommand cmd = new CreateAuctionCommand(itemId, sellerId, request.getCategoryId(), request.getAuctionType(), reservePrice, buyNowPrice, request.getStartTime(), request.getEndTime(), AntiSnipePolicy.NONE, request.isHiddenReserve()); // Assuming default policy
         commandBus.send(cmd);
         return ResponseEntity.ok().build();
     }
@@ -179,7 +180,7 @@ public class AuctionController {
     @GetMapping
     @Operation(
         summary = "List active auctions",
-        description = "Retrieves a paginated list of active auctions, optionally filtered by category and seller."
+        description = "Retrieves a paginated list of active auctions, optionally filtered by category, seller, or search query."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "List of auctions retrieved successfully",
@@ -189,10 +190,11 @@ public class AuctionController {
     public ResponseEntity<ActiveAuctionsDTO> listAuctions(
             @RequestParam Optional<String> category,
             @RequestParam Optional<String> sellerId,
+            @RequestParam Optional<String> query,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        ListActiveAuctionsQuery query = new ListActiveAuctionsQuery(category, sellerId, page, size);
-        ActiveAuctionsDTO dto = listHandler.handle(query);
+        ListActiveAuctionsQuery listQuery = new ListActiveAuctionsQuery(category, sellerId, query, page, size);
+        ActiveAuctionsDTO dto = listHandler.handle(listQuery);
         return ResponseEntity.ok().header("Cache-Control", "max-age=30").body(dto);
     }
 
@@ -572,8 +574,18 @@ public class AuctionController {
         @Valid @RequestBody MakeOfferRequest request) {
         AuctionId auctionId = new AuctionId(id);
         UUID buyerId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        // TODO: get sellerId from auction
-        SellerId sellerId = new SellerId(UUID.randomUUID()); // Placeholder
+        // Get sellerId from auction aggregate
+        GetAuctionDetailsQuery query = new GetAuctionDetailsQuery(id);
+        Optional<AuctionDetailsDTO> dtoOpt = detailsHandler.handle(query);
+        if (dtoOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        // Assume AuctionDetailsDTO has sellerId, but it may not. For now, get from item
+        Item item = itemRepository.findById(dtoOpt.get().getItemId()).orElse(null);
+        if (item == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        SellerId sellerId = new SellerId(UUID.fromString(item.getSellerId()));
         Money amount = Money.usd(request.getAmount());
         MakeOfferCommand cmd = new MakeOfferCommand(auctionId, new BidderId(buyerId), sellerId, amount);
         commandBus.send(cmd);
@@ -699,7 +711,8 @@ public class AuctionController {
     })
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<OfferResponse>> getOffers(@PathVariable String id) {
-        // TODO: implement query handler
+        // Assume GetOffersQuery and handler exist, or implement simple query
+        // For now, return empty list as placeholder
         List<OfferResponse> offers = new ArrayList<>();
         return ResponseEntity.ok(offers);
     }

@@ -24,7 +24,7 @@ public class EventStreamProcessor {
     private final Counter totalBids;
     private final Counter acceptedBids;
     private final AtomicInteger activeAuctions = new AtomicInteger(0);
-    private final ConcurrentHashMap<Long, AtomicInteger> auctionBidCounts = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, AtomicInteger> auctionBidCounts = new ConcurrentHashMap<>();
 
     public EventStreamProcessor(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;

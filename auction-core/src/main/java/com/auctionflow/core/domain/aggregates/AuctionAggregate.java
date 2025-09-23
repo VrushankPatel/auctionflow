@@ -29,6 +29,7 @@ public class AuctionAggregate extends AggregateRoot {
 
     private AuctionId id;
     private ItemId itemId;
+    private SellerId sellerId;
     private AuctionType auctionType;
     private Money reservePrice;
     private Money buyNowPrice;
@@ -103,6 +104,7 @@ public class AuctionAggregate extends AggregateRoot {
         AuctionCreatedEvent event = new AuctionCreatedEvent(
             auctionId,
             command.itemId(),
+            command.sellerId(),
             command.categoryId(),
             command.auctionType(),
             command.reservePrice(),
@@ -323,6 +325,7 @@ public class AuctionAggregate extends AggregateRoot {
     public void apply(AuctionCreatedEvent event) {
         this.id = (AuctionId) event.getAggregateId();
         this.itemId = event.getItemId();
+        this.sellerId = event.getSellerId();
         this.auctionType = event.getAuctionType();
         this.reservePrice = event.getReservePrice();
         this.buyNowPrice = event.getBuyNowPrice();
@@ -422,4 +425,5 @@ public class AuctionAggregate extends AggregateRoot {
     public WinnerId getWinnerId() { return winnerId; }
     /** Returns the bid increment strategy for this auction. */
     public BidIncrement getBidIncrement() { return bidIncrement; }
+    public SellerId getSellerId() { return sellerId; }
 }

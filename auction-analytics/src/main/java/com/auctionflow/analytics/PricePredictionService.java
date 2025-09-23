@@ -36,8 +36,8 @@ public class PricePredictionService {
                         request.getSellerRating()
                 );
 
-                // Dummy prediction: average of item price and reserve
-                double predictedPrice = (request.getItemPrice() + request.getReservePrice()) / 2.0;
+                // Dummy prediction: average of historical prices
+                double predictedPrice = request.getHistoricalPrices().stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
                 double confidence = 0.5;
 
                 return new PricePredictionResponse(predictedPrice, confidence);

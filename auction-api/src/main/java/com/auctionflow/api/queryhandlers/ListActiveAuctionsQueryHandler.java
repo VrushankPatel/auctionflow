@@ -18,12 +18,13 @@ public class ListActiveAuctionsQueryHandler {
         this.auctionReadRepository = auctionReadRepository;
     }
 
-    @Cacheable(value = "activeAuctions", key = "#query.category + '_' + #query.sellerId + '_' + #query.page + '_' + #query.size")
+    @Cacheable(value = "activeAuctions", key = "#query.category + '_' + #query.sellerId + '_' + #query.query + '_' + #query.page + '_' + #query.size")
     public ActiveAuctionsDTO handle(ListActiveAuctionsQuery query) {
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize());
         Page<ActiveAuctionsDTO.AuctionSummaryDTO> page = auctionReadRepository.findActiveAuctions(
                 query.getCategory().orElse(null),
                 query.getSellerId().orElse(null),
+                query.getQuery().orElse(null),
                 pageable
         );
 

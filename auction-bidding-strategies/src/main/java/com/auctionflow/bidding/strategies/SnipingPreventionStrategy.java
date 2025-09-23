@@ -4,6 +4,7 @@ import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.BidderId;
 import com.auctionflow.core.domain.valueobjects.Money;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -24,13 +25,13 @@ public class SnipingPreventionStrategy implements BiddingStrategy {
         }
 
         // Bid incrementally, not too aggressively
-        Money maxBid = new Money(params.getDouble("maxBid"));
+        Money maxBid = Money.usd(BigDecimal.valueOf(params.getDouble("maxBid")));
         if (currentHighestBid.isGreaterThanOrEqual(maxBid)) {
             return BidDecision.noBid();
         }
 
         // Calculate next bid amount - conservative increment
-        Money increment = new Money(params.getDouble("increment"));
+        Money increment = Money.usd(BigDecimal.valueOf(params.getDouble("increment")));
         Money nextBid = currentHighestBid.add(increment);
         if (nextBid.isGreaterThan(maxBid)) {
             nextBid = maxBid;

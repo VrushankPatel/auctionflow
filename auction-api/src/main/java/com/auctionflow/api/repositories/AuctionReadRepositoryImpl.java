@@ -27,8 +27,9 @@ public interface AuctionReadRepositoryImpl extends JpaRepository<com.auctionflow
            "LEFT JOIN Bid b ON a.id = b.auctionId AND b.accepted = true AND b.amount = (SELECT MAX(b2.amount) FROM Bid b2 WHERE b2.auctionId = a.id AND b2.accepted = true) " +
            "WHERE a.status = 'ACTIVE' " +
            "AND (:category IS NULL OR i.categoryId = :category) " +
-           "AND (:sellerId IS NULL OR i.sellerId = :sellerId)")
-    Page<ActiveAuctionsDTO.AuctionSummaryDTO> findActiveAuctions(@Param("category") String category, @Param("sellerId") String sellerId, Pageable pageable);
+           "AND (:sellerId IS NULL OR i.sellerId = :sellerId) " +
+           "AND (:query IS NULL OR LOWER(i.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(i.description) LIKE LOWER(CONCAT('%', :query, '%')))")
+    Page<ActiveAuctionsDTO.AuctionSummaryDTO> findActiveAuctions(@Param("category") String category, @Param("sellerId") String sellerId, @Param("query") String query, Pageable pageable);
 }
 
 // Note: Assuming Auction, Item, Bid entities exist in core or common.

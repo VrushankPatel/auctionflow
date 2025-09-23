@@ -1,6 +1,8 @@
 package com.auctionflow.analytics;
 
 import com.auctionflow.analytics.dtos.FraudAlertDTO;
+import com.auctionflow.analytics.dtos.FraudScoreRequest;
+import com.auctionflow.analytics.dtos.FraudScoreResponse;
 import com.auctionflow.analytics.entities.Auction;
 import com.auctionflow.analytics.entities.Bid;
 import com.auctionflow.analytics.entities.Item;
@@ -124,7 +126,7 @@ public class FraudDetectionService {
         long timeSinceLastBid = bids.isEmpty() ? 0 : ChronoUnit.SECONDS.between(bids.get(bids.size() - 1).getServerTs(), now);
 
         Long lastAuctionId = bids.get(bids.size() - 1).getAuctionId();
-        double lastBidAmount = bids.get(bids.size() - 1).getAmount().toBigDecimal().doubleValue();
+        double lastBidAmount = bids.get(bids.size() - 1).getAmount().doubleValue();
 
         FraudScoreRequest mlRequest = new FraudScoreRequest(
                 user.getId().toString(),
