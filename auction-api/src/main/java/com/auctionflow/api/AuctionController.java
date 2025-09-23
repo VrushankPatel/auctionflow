@@ -57,6 +57,7 @@ import java.util.Currency;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/auctions")
@@ -393,6 +394,73 @@ public class AuctionController {
         Money maxBid = Money.usd(request.getAmount());
         proxyBidService.setProxyBid(userId, auctionId, maxBid, null, null);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/bulk-bids")
+    @PreAuthorize("@auctionSecurityService.canBid(#id, authentication.principal)")
+    @Operation(
+        summary = "Place multiple bids in bulk",
+        description = "Places multiple bids on the auction in a single request for high-frequency bidding scenarios."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Bulk bids placed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid bids or auction not active", content = @Content),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "404", description = "Auction not found", content = @Content),
+        @ApiResponse(responseCode = "429", description = "Rate limit exceeded", content = @Content)
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    @org.springframework.cache.annotation.CacheEvict(value = "auctionDetails", key = "#id")
+    public ResponseEntity<List<BidResponse>> placeBulkBids(
+        @PathVariable String id,
+        @Valid @RequestBody List<PlaceBidRequest> requests,
+        HttpServletRequest httpRequest,
+        HttpServletResponse response) {
+        AuctionId auctionId = new AuctionId(UUID.fromString(id));
+        UUID bidderId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String clientIp = getClientIp(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+
+        // Check rate limits (more lenient for bulk)
+        io.github.resilience4j.ratelimiter.RateLimiter perUserLimiter = rateLimiterRegistry.rateLimiter("perUser");
+        io.github.resilience4j.ratelimiter.RateLimiter perIpLimiter = rateLimiterRegistry.rateLimiter("perIp");
+        io.github.resilience4j.ratelimiter.RateLimiter perAuctionLimiter = rateLimiterRegistry.rateLimiter("perAuction");
+
+        if (!perUserLimiter.acquirePermission(bidderId.toString().hashCode())) {
+            addRateLimitHeaders(response, perUserLimiter, bidderId.toString());
+            return ResponseEntity.status(429).build();
+        }
+        if (!perIpLimiter.acquirePermission(clientIp.hashCode())) {
+            addRateLimitHeaders(response, perIpLimiter, clientIp);
+            return ResponseEntity.status(429).build();
+        }
+        if (!perAuctionLimiter.acquirePermission(id.hashCode())) {
+            addRateLimitHeaders(response, perAuctionLimiter, id);
+            return ResponseEntity.status(429).build();
+        }
+
+        addRateLimitHeaders(response, perUserLimiter, bidderId.toString());
+        addRateLimitHeaders(response, perIpLimiter, clientIp);
+        addRateLimitHeaders(response, perAuctionLimiter, id);
+
+        List<BidResponse> responses = new ArrayList<>();
+        for (PlaceBidRequest request : requests) {
+            Instant serverTs = Instant.now();
+            long seqNo = sequenceService.nextSequence(auctionId);
+            Money amount = Money.usd(request.getAmount());
+            String idempotencyKey = request.getIdempotencyKey() != null ? request.getIdempotencyKey() : UUID.randomUUID().toString();
+
+            BidResponse bidResponse = new BidResponse();
+            bidResponse.setAccepted(true);
+            bidResponse.setServerTimestamp(serverTs);
+            bidResponse.setSequenceNumber(seqNo);
+            responses.add(bidResponse);
+
+            PlaceBidCommand cmd = new PlaceBidCommand(auctionId, bidderId, amount, idempotencyKey, serverTs, seqNo);
+            commandBus.sendAsync(cmd);
+        }
+
+        return ResponseEntity.ok(responses);
     }
 
     @PostMapping("/{id}/commits")
