@@ -16,8 +16,8 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 
 ## Performance Targets
 
-- **Bid Latency**: <100ms p99 response time for bid acceptance (currently 8.5ms average).
-- **Throughput**: 10,000 bids per second sustained (currently 4,800 bids/sec).
+- **Bid Latency**: <100ms p99 response time for bid acceptance (optimized with aggregate caching and zero-allocation hot paths).
+- **Throughput**: 10,000 bids per second sustained (improved with adaptive batch processing and efficient priority queues).
 - **Concurrency**: Support for 1 million concurrent watchers.
 
 ## Recent Optimizations
@@ -27,6 +27,10 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 - Enhanced Redis connection pooling for fast caching
 - Implemented rate limiting and circuit breakers for stability
 - Fixed compilation issues and updated to Spring Boot 3 compatibility
+- Added aggregate caching to reduce event store loads
+- Implemented adaptive batch processing for bid queues
+- Added search functionality for auctions with full-text search
+- Introduced item management API for complete auction lifecycle
 
 ## Bid Processing Optimizations
 
@@ -93,13 +97,18 @@ API documentation is available at [https://api.auctionflow.com/docs](https://api
 ### Key Endpoints
 
 - `POST /api/v1/auctions` - Create a new auction
-- `GET /api/v1/auctions` - List active auctions
+- `GET /api/v1/auctions` - List active auctions (with optional category, seller, and search query filters)
 - `GET /api/v1/auctions/{id}` - Get auction details
 - `POST /api/v1/auctions/{id}/bids` - Place a bid
 - `POST /api/v1/auctions/{id}/buy-now` - Buy auction immediately
 - `POST /api/v1/auctions/{id}/offers` - Make an offer
 - `POST /api/v1/auctions/{id}/commits` - Commit bid for sealed auctions
 - `POST /api/v1/auctions/{id}/reveals` - Reveal bid for sealed auctions
+- `POST /api/v1/items` - Create a new item
+- `GET /api/v1/items` - List items (with optional seller filter)
+- `GET /api/v1/items/{id}` - Get item details
+- `PUT /api/v1/items/{id}` - Update item
+- `DELETE /api/v1/items/{id}` - Delete item
 
 ## Contributing
 

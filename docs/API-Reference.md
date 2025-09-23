@@ -10,6 +10,78 @@ The Auction Flow API provides REST endpoints for managing auctions, bids, users,
 
 **Content-Type:** `application/json`
 
+## Items
+
+### Create Item
+
+Create a new item for auction.
+
+**Endpoint:** `POST /items`
+
+**Request Body:**
+```json
+{
+  "title": "Vintage Watch",
+  "description": "A beautiful vintage watch",
+  "categoryId": "watches",
+  "brand": "Rolex",
+  "serialNumber": "123456",
+  "images": ["url1", "url2"],
+  "metadata": {"key": "value"}
+}
+```
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "sellerId": "uuid",
+  "title": "Vintage Watch",
+  "description": "A beautiful vintage watch",
+  "categoryId": "watches",
+  "brand": "Rolex",
+  "serialNumber": "123456",
+  "images": ["url1", "url2"],
+  "metadata": {"key": "value"}
+}
+```
+
+### List Items
+
+List items with optional seller filter.
+
+**Endpoint:** `GET /items?sellerId={uuid}`
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "sellerId": "uuid",
+    "title": "Vintage Watch",
+    ...
+  }
+]
+```
+
+### Get Item
+
+Get item details.
+
+**Endpoint:** `GET /items/{id}`
+
+### Update Item
+
+Update item (seller only).
+
+**Endpoint:** `PUT /items/{id}`
+
+### Delete Item
+
+Delete item (seller only).
+
+**Endpoint:** `DELETE /items/{id}`
+
 ## Auctions
 
 ### Create Auction
@@ -64,12 +136,11 @@ Retrieve paginated list of auctions with filtering.
 
 **Query Parameters:**
 - `status`: OPEN, CLOSED, CANCELLED
-- `category_id`: Filter by category
-- `seller_id`: Filter by seller
-- `start_date`: ISO date string
-- `end_date`: ISO date string
-- `page`: Page number (default: 1)
-- `size`: Page size (default: 20)
+- `category`: Filter by category
+- `sellerId`: Filter by seller
+- `query`: Search in title and description
+- `page`: Page number (default: 0)
+- `size`: Page size (default: 10)
 
 **Response:**
 ```json
