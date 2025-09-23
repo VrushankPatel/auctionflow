@@ -133,6 +133,30 @@ public class OfferAggregate extends AggregateRoot {
 
     @Override
     public void apply(DomainEvent event) {
-        // TODO: implement event application
+        if (event instanceof OfferCreatedEvent) {
+            apply((OfferCreatedEvent) event);
+        } else if (event instanceof OfferAcceptedEvent) {
+            apply((OfferAcceptedEvent) event);
+        } else if (event instanceof OfferRejectedEvent) {
+            apply((OfferRejectedEvent) event);
+        }
+    }
+
+    private void apply(OfferCreatedEvent event) {
+        this.id = (OfferId) event.getAggregateId();
+        this.auctionId = event.getAuctionId();
+        this.buyerId = event.getBuyerId();
+        this.sellerId = event.getSellerId();
+        this.amount = event.getAmount();
+        this.createdAt = event.getTimestamp();
+        this.status = OfferStatus.PENDING;
+    }
+
+    private void apply(OfferAcceptedEvent event) {
+        this.status = OfferStatus.ACCEPTED;
+    }
+
+    private void apply(OfferRejectedEvent event) {
+        this.status = OfferStatus.REJECTED;
     }
 }

@@ -24,6 +24,7 @@ import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.AuctionType;
 import com.auctionflow.core.domain.valueobjects.Money;
 import com.auctionflow.events.command.CommandBus;
+import com.auctionflow.common.service.SequenceService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -51,15 +52,17 @@ public class AuctionGraphQLController {
     private final ItemValidationService itemValidationService;
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
+    private final SequenceService sequenceService;
 
     public AuctionGraphQLController(CommandBus commandBus,
-                                    ListActiveAuctionsQueryHandler listHandler,
-                                    GetAuctionDetailsQueryHandler detailsHandler,
-                                    GetBidHistoryQueryHandler bidHistoryHandler,
-                                    UserService userService,
-                                    ItemValidationService itemValidationService,
-                                    ItemRepository itemRepository,
-                                    UserRepository userRepository) {
+                                     ListActiveAuctionsQueryHandler listHandler,
+                                     GetAuctionDetailsQueryHandler detailsHandler,
+                                     GetBidHistoryQueryHandler bidHistoryHandler,
+                                     UserService userService,
+                                     ItemValidationService itemValidationService,
+                                     ItemRepository itemRepository,
+                                     UserRepository userRepository,
+                                     SequenceService sequenceService) {
         this.commandBus = commandBus;
         this.listHandler = listHandler;
         this.detailsHandler = detailsHandler;
@@ -68,6 +71,7 @@ public class AuctionGraphQLController {
         this.itemValidationService = itemValidationService;
         this.itemRepository = itemRepository;
         this.userRepository = userRepository;
+        this.sequenceService = sequenceService;
     }
 
     @QueryMapping
@@ -117,7 +121,7 @@ public class AuctionGraphQLController {
         CreateAuctionCommand cmd = new CreateAuctionCommand(
             auctionId,
             new com.auctionflow.core.domain.valueobjects.ItemId(UUID.fromString(input.getItemId())),
-            new com.auctionflow.core.domain.valueobjects.SellerId(UUID.randomUUID()),
+            new com.auctionflow.core.domain.valueobjects.SellerId(user.getId()),
             input.getCategoryId(),
             AuctionType.valueOf(input.getAuctionType()),
             reservePrice,
@@ -138,7 +142,9 @@ public class AuctionGraphQLController {
     public AuctionDetailsDTO placeBid(@Argument String auctionId, @Argument PlaceBidInput input) {
         UUID bidderId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Money amount = Money.usd(BigDecimal.valueOf(input.getAmount()));
-        PlaceBidCommand cmd = new PlaceBidCommand(new AuctionId(UUID.fromString(auctionId)), bidderId, amount, input.getIdempotencyKey(), Instant.now(), 0L);
+        Instant serverTs = Instant.now();
+        long seqNo = sequenceService.nextSequence(new AuctionId(UUID.fromString(auctionId)));
+        PlaceBidCommand cmd = new PlaceBidCommand(new AuctionId(UUID.fromString(auctionId)), bidderId, amount, input.getIdempotencyKey(), serverTs, seqNo);
         commandBus.send(cmd);
         // Return updated auction
         GetAuctionDetailsQuery query = new GetAuctionDetailsQuery(auctionId);

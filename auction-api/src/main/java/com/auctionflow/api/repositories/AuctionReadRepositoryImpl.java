@@ -5,6 +5,7 @@ import com.auctionflow.api.dtos.AuctionDetailsDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -14,6 +15,7 @@ import java.util.Optional;
 @Repository
 public interface AuctionReadRepositoryImpl extends JpaRepository<com.auctionflow.api.entities.Auction, String>, AuctionReadRepository {
 
+    @Cacheable(value = "auctionDetails", key = "#auctionId")
     @Query("SELECT new com.auctionflow.api.dtos.AuctionDetailsDTO(a.id, i.id, i.sellerId, i.title, i.description, a.status, a.startTs, a.endTs, null, a.buyNowPrice, a.hiddenReserve, a.currentHighestBid, a.currentHighestBidder, a.endTs) " +
             "FROM Auction a " +
             "LEFT JOIN Item i ON a.itemId = i.id " +
