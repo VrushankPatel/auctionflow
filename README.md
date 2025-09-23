@@ -43,6 +43,10 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 - Automated bidding strategies (sniping prevention, optimal timing, budget optimization, reinforcement learning)
 - Real-time notifications via Redis Pub/Sub and Kafka WebSocket gateway
 - CQRS/Event Sourcing for horizontal scalability and audit trails
+- Fixed incomplete implementations: GraphQL mutations, command dispatching, event application
+- Implemented proper auction ID generation and handling
+- Enhanced automated bidding with JSON serialization
+- Added training data persistence for price prediction models
 
 ## Bid Processing Optimizations
 
@@ -109,6 +113,8 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 ## API Documentation
 
 API documentation is available at [https://api.auctionflow.com/docs](https://api.auctionflow.com/docs)
+
+GraphQL endpoint available at `/graphql` for flexible queries and mutations.
 
 ### Key Endpoints
 
