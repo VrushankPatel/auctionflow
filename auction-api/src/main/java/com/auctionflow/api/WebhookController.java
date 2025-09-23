@@ -13,14 +13,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/webhooks")
+@RequestMapping("/api/v1")
 public class WebhookController {
 
     private static final Logger logger = LoggerFactory.getLogger(WebhookController.class);
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    @PostMapping("/test")
+    @PostMapping("/webhooks/test")
     public ResponseEntity<Map<String, Object>> testWebhook(@RequestBody TestWebhookRequest request) {
         Map<String, Object> response = new HashMap<>();
 
@@ -38,7 +38,7 @@ public class WebhookController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/payments")
+    @PostMapping("/payments/webhook")
     @CircuitBreaker(name = "paymentWebhook")
     public ResponseEntity<Map<String, Object>> paymentWebhook(@RequestBody Map<String, Object> payload) {
         logger.info("Received payment webhook: {}", payload);
