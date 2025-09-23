@@ -122,6 +122,7 @@ GraphQL endpoint available at `/graphql` for flexible queries and mutations.
 - `GET /api/v1/auctions` - List active auctions (with optional category, seller, and search query filters)
 - `GET /api/v1/auctions/{id}` - Get auction details
 - `POST /api/v1/auctions/{id}/bids` - Place a bid
+- `POST /api/v1/auctions/{id}/bulk-bids` - Place multiple bids in bulk
 - `POST /api/v1/auctions/{id}/buy-now` - Buy auction immediately
 - `POST /api/v1/auctions/{id}/offers` - Make an offer
 - `GET /api/v1/auctions/{id}/offers` - List offers for auction
