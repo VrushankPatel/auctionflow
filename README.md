@@ -47,6 +47,9 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 - Implemented proper auction ID generation and handling
 - Enhanced automated bidding with JSON serialization
 - Added training data persistence for price prediction models
+- Fixed GraphQL bugs: proper sequence number generation and seller ID assignment
+- Added caching to auction read repository for improved query performance
+- Implemented offer event application for complete offer lifecycle handling
 
 ## Bid Processing Optimizations
 
