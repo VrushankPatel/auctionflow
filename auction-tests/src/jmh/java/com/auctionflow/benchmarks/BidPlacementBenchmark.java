@@ -25,15 +25,22 @@ public class BidPlacementBenchmark {
         // Create an auction aggregate in OPEN state
         AuctionId auctionId = AuctionId.generate();
         ItemId itemId = new ItemId(UUID.randomUUID());
+        SellerId sellerId = new SellerId(UUID.randomUUID());
+        String categoryId = "test";
+        AuctionType auctionType = AuctionType.ENGLISH_OPEN;
         Money reservePrice = Money.usd(java.math.BigDecimal.valueOf(10.0));
         Money buyNowPrice = Money.usd(java.math.BigDecimal.valueOf(100.0));
         Instant startTime = Instant.now().minusSeconds(60);
         Instant endTime = Instant.now().plusSeconds(300);
         AntiSnipePolicy antiSnipePolicy = AntiSnipePolicy.none();
+        boolean hiddenReserve = false;
+        UUID eventId = UUID.randomUUID();
+        Instant timestamp = Instant.now();
+        long sequenceNumber = 1;
 
         AuctionCreatedEvent createdEvent = new AuctionCreatedEvent(
-            auctionId, itemId, UUID.randomUUID(), reservePrice, buyNowPrice, startTime, endTime, antiSnipePolicy,
-            UUID.randomUUID(), Instant.now(), 1
+            auctionId, itemId, sellerId, categoryId, auctionType, reservePrice, buyNowPrice, startTime, endTime, antiSnipePolicy, hiddenReserve,
+            eventId, timestamp, sequenceNumber
         );
 
         auctionAggregate = new AuctionAggregate();
@@ -41,11 +48,13 @@ public class BidPlacementBenchmark {
 
         UUID bidderId = UUID.randomUUID();
         Money bidAmount = Money.usd(java.math.BigDecimal.valueOf(50.0));
-        validBidCommand = new PlaceBidCommand(auctionId, bidderId, bidAmount, "idempotency-key");
+        Instant serverTs = Instant.now();
+        long seqNo = 2;
+        validBidCommand = new PlaceBidCommand(auctionId, bidderId, bidAmount, "idempotency-key", serverTs, seqNo);
     }
 
     @Benchmark
     public void benchmarkPlaceBid() {
-        auctionAggregate.handle(validBidCommand, Instant.now(), 1L);
+        auctionAggregate.handle(validBidCommand);
     }
 }
