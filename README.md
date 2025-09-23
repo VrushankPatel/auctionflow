@@ -57,6 +57,8 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 - **Batch Event Saves**: Multiple bid events saved in single DB transaction to reduce round trips.
 - **Aggregate State Sharing**: Proxy bidding uses shared aggregate state to avoid reloading events, improving performance.
 - **Aggregate Caching**: In-memory caching of aggregate state to reduce event store loads and improve reconstruction performance.
+- **Batched Proxy Bidding**: Proxy and automated bids are processed in batches with single event store saves and Kafka publishes to reduce latency.
+- **Optimized DB Updates**: Proxy bid status and current bid updates are batched to minimize database round trips.
 
 ## Modules
 
@@ -106,6 +108,19 @@ API documentation is available at [https://api.auctionflow.com/docs](https://api
 - `POST /api/v1/auctions/{id}/offers` - Make an offer
 - `POST /api/v1/auctions/{id}/commits` - Commit bid for sealed auctions
 - `POST /api/v1/auctions/{id}/reveals` - Reveal bid for sealed auctions
+- `POST /api/v1/auctions/{id}/watch` - Add auction to watchlist
+- `DELETE /api/v1/auctions/{id}/watch` - Remove auction from watchlist
+- `POST /api/v1/auctions/{id}/close` - Admin force close auction
+- `POST /api/v1/users` - Create a new user
+- `GET /api/v1/users/{id}/bids` - Get user bid history
+- `POST /api/v1/payments/webhook` - Payment provider webhook
+- `GET /api/v1/reference/categories` - Get item categories
+- `GET /api/v1/reference/bid-increments` - Get bid increment strategies
+- `GET /api/v1/reference/auction-types` - Get auction types
+- `GET /api/v1/reference/extension-policies` - Get extension policies
+- `POST /api/v1/automated-bidding/strategies` - Create automated bidding strategy
+- `GET /api/v1/automated-bidding/strategies` - List user strategies
+- `DELETE /api/v1/automated-bidding/strategies/{id}` - Deactivate strategy
 - `POST /api/v1/items` - Create a new item
 - `GET /api/v1/items` - List items (with optional seller filter)
 - `GET /api/v1/items/{id}` - Get item details
