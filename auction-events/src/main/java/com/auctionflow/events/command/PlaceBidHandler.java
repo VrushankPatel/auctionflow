@@ -123,7 +123,7 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
             eventStore.save(newEvents, aggregate.getExpectedVersion());
             // Update cache with new version
             aggregateCacheService.put(command.auctionId(), aggregate);
-            // Publish to Kafka
+            // Publish to Kafka in batch
             for (DomainEvent event : newEvents) {
                 kafkaTemplate.send("auction-events", event.getAggregateId().toString(), event);
             }
@@ -177,15 +177,21 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
         // Find active proxy bids that can bid higher
         List<ProxyBidEntity> proxyBids = proxyBidRepository.findActiveProxyBidsHigherThan(auctionId.value(), currentHighest.toBigDecimal());
 
+        // Collect all events and DB updates for batch processing
+        List<DomainEvent> allProxyEvents = new java.util.ArrayList<>();
+        List<ProxyBidEntity> toUpdateCurrentBid = new java.util.ArrayList<>();
+        List<ProxyBidEntity> toUpdateStatusOutbid = new java.util.ArrayList<>();
+        List<ProxyBidEntity> toUpdateStatusWon = new java.util.ArrayList<>();
+
         for (ProxyBidEntity proxyBid : proxyBids) {
             // Calculate next bid amount using proper increment strategy
             Money nextBidAmount = auctionAgg.getBidIncrement().nextBid(currentHighest);
             if (nextBidAmount.toBigDecimal().compareTo(proxyBid.getMaxBid()) > 0) {
                 // Cannot bid, mark as outbid
-                proxyBidRepository.updateStatus(proxyBid.getId(), "OUTBID");
+                toUpdateStatusOutbid.add(proxyBid);
                 // Publish outbid event
-                ProxyBidOutbidEvent outbidEvent = new ProxyBidOutbidEvent(auctionId, proxyBid.getUserId(), "Maximum bid exceeded", UUID.randomUUID(), Instant.now(), 0); // sequence not used
-                kafkaTemplate.send("auction-events", outbidEvent.getAggregateId().toString(), outbidEvent);
+                ProxyBidOutbidEvent outbidEvent = new ProxyBidOutbidEvent(auctionId, proxyBid.getUserId(), "Maximum bid exceeded", UUID.randomUUID(), Instant.now(), 0);
+                allProxyEvents.add(outbidEvent);
                 continue;
             }
 
@@ -196,24 +202,41 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
             // Directly handle the proxy bid on the aggregate
             auctionAgg.handle(proxyCommand);
             List<DomainEvent> proxyEvents = auctionAgg.getDomainEvents();
-            long newExpectedVersion = auctionAgg.getExpectedVersion() + proxyEvents.size();
-            eventStore.save(proxyEvents, auctionAgg.getExpectedVersion());
-            auctionAgg.setExpectedVersion(newExpectedVersion);
-            for (DomainEvent event : proxyEvents) {
-                kafkaTemplate.send("auction-events", event.getAggregateId().toString(), event);
-            }
+            allProxyEvents.addAll(proxyEvents);
             auctionAgg.clearDomainEvents();
 
             // Update proxy bid current bid
-            proxyBidRepository.updateCurrentBid(proxyBid.getId(), nextBidAmount.toBigDecimal());
+            proxyBid.setCurrentBid(nextBidAmount.toBigDecimal());
+            toUpdateCurrentBid.add(proxyBid);
 
             // Update current highest for next iteration
             currentHighest = nextBidAmount;
 
-            // If this proxy bid reached its max, mark as won or active
+            // If this proxy bid reached its max, mark as won
             if (nextBidAmount.toBigDecimal().compareTo(proxyBid.getMaxBid()) >= 0) {
-                proxyBidRepository.updateStatus(proxyBid.getId(), "WON");
+                toUpdateStatusWon.add(proxyBid);
             }
+        }
+
+        // Batch save all proxy events
+        if (!allProxyEvents.isEmpty()) {
+            eventStore.save(allProxyEvents, auctionAgg.getExpectedVersion());
+            auctionAgg.setExpectedVersion(auctionAgg.getExpectedVersion() + allProxyEvents.size());
+            // Batch Kafka sends
+            for (DomainEvent event : allProxyEvents) {
+                kafkaTemplate.send("auction-events", event.getAggregateId().toString(), event);
+            }
+        }
+
+        // Batch DB updates
+        for (ProxyBidEntity p : toUpdateCurrentBid) {
+            proxyBidRepository.updateCurrentBid(p.getId(), p.getCurrentBid());
+        }
+        for (ProxyBidEntity p : toUpdateStatusOutbid) {
+            proxyBidRepository.updateStatus(p.getId(), "OUTBID");
+        }
+        for (ProxyBidEntity p : toUpdateStatusWon) {
+            proxyBidRepository.updateStatus(p.getId(), "WON");
         }
     }
 
@@ -230,6 +253,9 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
         // Evaluate automated strategies
         List<StrategyBidDecision> decisions = automatedBiddingService.evaluateStrategies(auctionId, currentHighest, auctionEndTime);
 
+        // Collect all events for batch processing
+        List<DomainEvent> allAutoEvents = new java.util.ArrayList<>();
+
         for (StrategyBidDecision strategyDecision : decisions) {
             BidDecision decision = strategyDecision.getDecision();
             if (decision.shouldBid() && decision.getBidTime().isBefore(Instant.now().plusSeconds(1))) { // Only immediate bids for now
@@ -242,16 +268,21 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
                 // Handle the automated bid
                 auctionAgg.handle(autoCommand);
                 List<DomainEvent> autoEvents = auctionAgg.getDomainEvents();
-                long newExpectedVersion = auctionAgg.getExpectedVersion() + autoEvents.size();
-                eventStore.save(autoEvents, auctionAgg.getExpectedVersion());
-                auctionAgg.setExpectedVersion(newExpectedVersion);
-                for (DomainEvent event : autoEvents) {
-                    kafkaTemplate.send("auction-events", event.getAggregateId().toString(), event);
-                }
+                allAutoEvents.addAll(autoEvents);
                 auctionAgg.clearDomainEvents();
 
                 // Update current highest for next iteration
                 currentHighest = decision.getBidAmount();
+            }
+        }
+
+        // Batch save all automated events
+        if (!allAutoEvents.isEmpty()) {
+            eventStore.save(allAutoEvents, auctionAgg.getExpectedVersion());
+            auctionAgg.setExpectedVersion(auctionAgg.getExpectedVersion() + allAutoEvents.size());
+            // Batch Kafka sends
+            for (DomainEvent event : allAutoEvents) {
+                kafkaTemplate.send("auction-events", event.getAggregateId().toString(), event);
             }
         }
     }
