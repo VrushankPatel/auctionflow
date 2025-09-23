@@ -21,7 +21,7 @@ import org.testcontainers.junit.jupiter.Container;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -60,14 +60,15 @@ public class ChaosIntegrationTest extends AbstractIntegrationTest {
     void testNetworkDelayResilience() throws IOException, InterruptedException {
         // Create auction
         CreateAuctionRequest createRequest = new CreateAuctionRequest();
-        createRequest.setTitle("Chaos Test Auction");
-        createRequest.setDescription("Test for network delay");
-        createRequest.setStartTime(LocalDateTime.now().plusSeconds(1));
-        createRequest.setEndTime(LocalDateTime.now().plusMinutes(5));
+        createRequest.setItemId("test-item-5");
+        createRequest.setCategoryId("test-category");
+        createRequest.setAuctionType(com.auctionflow.core.domain.valueobjects.AuctionType.ENGLISH_OPEN);
+        createRequest.setStartTime(Instant.now().plusSeconds(1));
+        createRequest.setEndTime(Instant.now().plusSeconds(300));
         createRequest.setReservePrice(BigDecimal.valueOf(100));
 
         ResponseEntity<AuctionDetailsDTO> createResponse = restTemplate.postForEntity("/api/v1/auctions", createRequest, AuctionDetailsDTO.class);
-        assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         AuctionDetailsDTO auction = createResponse.getBody();
         assertThat(auction).isNotNull();
 
@@ -79,14 +80,14 @@ public class ChaosIntegrationTest extends AbstractIntegrationTest {
         PlaceBidRequest bidRequest = new PlaceBidRequest();
         bidRequest.setAmount(BigDecimal.valueOf(110));
 
-        ResponseEntity<BidResponse> bidResponse = restTemplate.postForEntity("/api/v1/auctions/" + auction.getId() + "/bids", bidRequest, BidResponse.class);
+        ResponseEntity<BidResponse> bidResponse = restTemplate.postForEntity("/api/v1/auctions/" + auction.getAuctionId() + "/bids", bidRequest, BidResponse.class);
         assertThat(bidResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         // Remove latency
         latency.remove();
 
         // Verify bid was recorded
-        ResponseEntity<AuctionDetailsDTO> auctionResponse = restTemplate.getForEntity("/api/v1/auctions/" + auction.getId(), AuctionDetailsDTO.class);
+        ResponseEntity<AuctionDetailsDTO> auctionResponse = restTemplate.getForEntity("/api/v1/auctions/" + auction.getAuctionId(), AuctionDetailsDTO.class);
         assertThat(auctionResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         AuctionDetailsDTO updatedAuction = auctionResponse.getBody();
         assertThat(updatedAuction.getCurrentHighestBid()).isEqualTo(BigDecimal.valueOf(110));
@@ -96,14 +97,15 @@ public class ChaosIntegrationTest extends AbstractIntegrationTest {
     void testDatabaseFailureResilience() throws Exception {
         // Create auction before failure
         CreateAuctionRequest createRequest = new CreateAuctionRequest();
-        createRequest.setTitle("DB Failure Test Auction");
-        createRequest.setDescription("Test for DB failure");
-        createRequest.setStartTime(LocalDateTime.now().plusSeconds(1));
-        createRequest.setEndTime(LocalDateTime.now().plusMinutes(5));
+        createRequest.setItemId("test-item-6");
+        createRequest.setCategoryId("test-category");
+        createRequest.setAuctionType(com.auctionflow.core.domain.valueobjects.AuctionType.ENGLISH_OPEN);
+        createRequest.setStartTime(Instant.now().plusSeconds(1));
+        createRequest.setEndTime(Instant.now().plusSeconds(300));
         createRequest.setReservePrice(BigDecimal.valueOf(100));
 
         ResponseEntity<AuctionDetailsDTO> createResponse = restTemplate.postForEntity("/api/v1/auctions", createRequest, AuctionDetailsDTO.class);
-        assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         AuctionDetailsDTO auction = createResponse.getBody();
         assertThat(auction).isNotNull();
 
@@ -111,7 +113,7 @@ public class ChaosIntegrationTest extends AbstractIntegrationTest {
         PlaceBidRequest bidRequest = new PlaceBidRequest();
         bidRequest.setAmount(BigDecimal.valueOf(110));
 
-        ResponseEntity<BidResponse> bidResponse = restTemplate.postForEntity("/api/v1/auctions/" + auction.getId() + "/bids", bidRequest, BidResponse.class);
+        ResponseEntity<BidResponse> bidResponse = restTemplate.postForEntity("/api/v1/auctions/" + auction.getAuctionId() + "/bids", bidRequest, BidResponse.class);
         assertThat(bidResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         // Stop Postgres container
@@ -124,7 +126,7 @@ public class ChaosIntegrationTest extends AbstractIntegrationTest {
         PlaceBidRequest bidRequest2 = new PlaceBidRequest();
         bidRequest2.setAmount(BigDecimal.valueOf(120));
 
-        ResponseEntity<BidResponse> bidResponse2 = restTemplate.postForEntity("/api/v1/auctions/" + auction.getId() + "/bids", bidRequest2, BidResponse.class);
+        ResponseEntity<BidResponse> bidResponse2 = restTemplate.postForEntity("/api/v1/auctions/" + auction.getAuctionId() + "/bids", bidRequest2, BidResponse.class);
         // Assert it fails
         assertThat(bidResponse2.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR); // or whatever the error is
 
@@ -138,14 +140,14 @@ public class ChaosIntegrationTest extends AbstractIntegrationTest {
         PlaceBidRequest bidRequest3 = new PlaceBidRequest();
         bidRequest3.setAmount(BigDecimal.valueOf(130));
 
-        ResponseEntity<BidResponse> bidResponse3 = restTemplate.postForEntity("/api/v1/auctions/" + auction.getId() + "/bids", bidRequest3, BidResponse.class);
+        ResponseEntity<BidResponse> bidResponse3 = restTemplate.postForEntity("/api/v1/auctions/" + auction.getAuctionId() + "/bids", bidRequest3, BidResponse.class);
         assertThat(bidResponse3.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         // Verify data consistency - all bids should be there
         // Get bids
         // Assume there's an endpoint to get bids
         // For now, check current highest is 130
-        ResponseEntity<AuctionDetailsDTO> auctionResponse = restTemplate.getForEntity("/api/v1/auctions/" + auction.getId(), AuctionDetailsDTO.class);
+        ResponseEntity<AuctionDetailsDTO> auctionResponse = restTemplate.getForEntity("/api/v1/auctions/" + auction.getAuctionId(), AuctionDetailsDTO.class);
         assertThat(auctionResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         AuctionDetailsDTO updatedAuction = auctionResponse.getBody();
         assertThat(updatedAuction.getCurrentHighestBid()).isEqualTo(BigDecimal.valueOf(130));

@@ -14,7 +14,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.HashMap;
 import java.util.Map;
 
-import static au.com.dius.pact.consumer.dsl.PactDslJsonBody.*;
+import au.com.dius.pact.consumer.dsl.PactDslJsonBody;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(PactConsumerTestExt.class)
@@ -30,15 +30,13 @@ public class AuctionApiConsumerPactTest {
             .method("GET")
             .willRespondWith()
             .status(200)
-            .body(object()
-                .stringType("id", "123")
+            .body(new PactDslJsonBody()
+                .stringType("auctionId", "123")
                 .stringType("itemId", "item-123")
                 .stringType("status", "ACTIVE")
-                .object("currentHighestBid")
-                    .numberType("amount", 150.0)
-                    .stringType("bidderId", "bidder-456")
-                .closeObject()
-                .stringType("endTime", "2023-10-01T12:00:00Z")
+                .decimalType("currentHighestBid", 150.0)
+                .stringType("highestBidderId", "bidder-456")
+                .stringType("endTs", "2023-10-01T12:00:00Z")
             )
             .toPact();
     }
@@ -55,7 +53,7 @@ public class AuctionApiConsumerPactTest {
             .path("/auctions/123/bids")
             .method("POST")
             .headers(headers)
-            .body(object()
+            .body(new PactDslJsonBody()
                 .numberType("amount", 200.0)
                 .stringType("idempotencyKey", "key-123")
             )

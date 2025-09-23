@@ -11,7 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,16 +24,17 @@ public class AuctionLifecycleIntegrationTest extends AbstractIntegrationTest {
     void testCompleteAuctionLifecycle() {
         // Create auction
         CreateAuctionRequest createRequest = new CreateAuctionRequest();
-        createRequest.setTitle("Test Auction");
-        createRequest.setDescription("Test Description");
-        createRequest.setStartTime(LocalDateTime.now().plusSeconds(1));
-        createRequest.setEndTime(LocalDateTime.now().plusSeconds(10)); // Short auction for test
+        createRequest.setItemId("test-item-3");
+        createRequest.setCategoryId("test-category");
+        createRequest.setAuctionType(com.auctionflow.core.domain.valueobjects.AuctionType.ENGLISH_OPEN);
+        createRequest.setStartTime(Instant.now().plusSeconds(1));
+        createRequest.setEndTime(Instant.now().plusSeconds(10)); // Short auction for test
         createRequest.setReservePrice(BigDecimal.valueOf(100));
         createRequest.setBuyNowPrice(BigDecimal.valueOf(200));
         // Assume user is created or mocked
 
         ResponseEntity<AuctionDetailsDTO> createResponse = restTemplate.postForEntity("/api/v1/auctions", createRequest, AuctionDetailsDTO.class);
-        assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         AuctionDetailsDTO auction = createResponse.getBody();
         assertThat(auction).isNotNull();
 
@@ -41,7 +42,7 @@ public class AuctionLifecycleIntegrationTest extends AbstractIntegrationTest {
         PlaceBidRequest bidRequest = new PlaceBidRequest();
         bidRequest.setAmount(BigDecimal.valueOf(110));
 
-        ResponseEntity<BidResponse> bidResponse = restTemplate.postForEntity("/api/v1/auctions/" + auction.getId() + "/bids", bidRequest, BidResponse.class);
+        ResponseEntity<BidResponse> bidResponse = restTemplate.postForEntity("/api/v1/auctions/" + auction.getAuctionId() + "/bids", bidRequest, BidResponse.class);
         assertThat(bidResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         // Wait for auction to close

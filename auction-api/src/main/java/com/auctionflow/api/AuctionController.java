@@ -6,9 +6,11 @@ import java.time.Instant;
 import com.auctionflow.api.entities.User;
 import com.auctionflow.api.queryhandlers.GetAuctionDetailsQueryHandler;
 import com.auctionflow.api.queryhandlers.GetBidHistoryQueryHandler;
+import com.auctionflow.api.queryhandlers.GetOffersQueryHandler;
 import com.auctionflow.api.queryhandlers.ListActiveAuctionsQueryHandler;
 import com.auctionflow.api.queries.GetAuctionDetailsQuery;
 import com.auctionflow.api.queries.GetBidHistoryQuery;
+import com.auctionflow.api.queries.GetOffersQuery;
 import com.auctionflow.api.queries.ListActiveAuctionsQuery;
 import com.auctionflow.api.repositories.ItemRepository;
 import com.auctionflow.api.services.ItemValidationService;
@@ -66,6 +68,7 @@ public class AuctionController {
     private final ListActiveAuctionsQueryHandler listHandler;
     private final GetAuctionDetailsQueryHandler detailsHandler;
     private final GetBidHistoryQueryHandler bidHistoryHandler;
+    private final GetOffersQueryHandler offersHandler;
     private final SuspiciousActivityService suspiciousActivityService;
     private final ProxyBidService proxyBidService;
     private final UserService userService;
@@ -75,22 +78,24 @@ public class AuctionController {
     private final RateLimiterRegistry rateLimiterRegistry;
 
     public AuctionController(SequenceService sequenceService,
-                              CommandBus commandBus,
-                              ListActiveAuctionsQueryHandler listHandler,
-                              GetAuctionDetailsQueryHandler detailsHandler,
-                              GetBidHistoryQueryHandler bidHistoryHandler,
-                              SuspiciousActivityService suspiciousActivityService,
-                              ProxyBidService proxyBidService,
-                              UserService userService,
-                              ItemValidationService itemValidationService,
-                               ItemRepository itemRepository,
-                               FeatureFlagService featureFlagService,
-                               RateLimiterRegistry rateLimiterRegistry) {
+                               CommandBus commandBus,
+                               ListActiveAuctionsQueryHandler listHandler,
+                               GetAuctionDetailsQueryHandler detailsHandler,
+                               GetBidHistoryQueryHandler bidHistoryHandler,
+                               GetOffersQueryHandler offersHandler,
+                               SuspiciousActivityService suspiciousActivityService,
+                               ProxyBidService proxyBidService,
+                               UserService userService,
+                               ItemValidationService itemValidationService,
+                                ItemRepository itemRepository,
+                                FeatureFlagService featureFlagService,
+                                RateLimiterRegistry rateLimiterRegistry) {
         this.sequenceService = sequenceService;
         this.commandBus = commandBus;
         this.listHandler = listHandler;
         this.detailsHandler = detailsHandler;
         this.bidHistoryHandler = bidHistoryHandler;
+        this.offersHandler = offersHandler;
         this.suspiciousActivityService = suspiciousActivityService;
         this.proxyBidService = proxyBidService;
         this.userService = userService;
@@ -713,9 +718,8 @@ public class AuctionController {
     })
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<OfferResponse>> getOffers(@PathVariable String id) {
-        // Assume GetOffersQuery and handler exist, or implement simple query
-        // For now, return empty list as placeholder
-        List<OfferResponse> offers = new ArrayList<>();
+        GetOffersQuery query = new GetOffersQuery(id);
+        List<OfferResponse> offers = offersHandler.handle(query);
         return ResponseEntity.ok(offers);
     }
 

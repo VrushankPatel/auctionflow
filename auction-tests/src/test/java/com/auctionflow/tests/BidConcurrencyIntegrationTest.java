@@ -10,7 +10,7 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -27,15 +27,16 @@ public class BidConcurrencyIntegrationTest extends AbstractIntegrationTest {
     void testConcurrentBids() throws InterruptedException {
         // Create auction
         CreateAuctionRequest createRequest = new CreateAuctionRequest();
-        createRequest.setTitle("Concurrent Test Auction");
-        createRequest.setDescription("Test");
-        createRequest.setStartTime(LocalDateTime.now());
-        createRequest.setEndTime(LocalDateTime.now().plusMinutes(1));
+        createRequest.setItemId("test-item-4");
+        createRequest.setCategoryId("test-category");
+        createRequest.setAuctionType(com.auctionflow.core.domain.valueobjects.AuctionType.ENGLISH_OPEN);
+        createRequest.setStartTime(Instant.now());
+        createRequest.setEndTime(Instant.now().plusSeconds(60));
         createRequest.setReservePrice(BigDecimal.valueOf(100));
 
         ResponseEntity<AuctionDetailsDTO> createResponse = restTemplate.postForEntity("/api/v1/auctions", createRequest, AuctionDetailsDTO.class);
         AuctionDetailsDTO auction = createResponse.getBody();
-        Long auctionId = auction.getId();
+        String auctionId = auction.getAuctionId();
 
         // Simulate concurrent bids
         ExecutorService executor = Executors.newFixedThreadPool(10);

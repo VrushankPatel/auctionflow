@@ -9,7 +9,7 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -23,15 +23,16 @@ public class TimerExecutionIntegrationTest extends AbstractIntegrationTest {
     void testAuctionClosesAtEndTime() {
         // Create auction with short duration
         CreateAuctionRequest createRequest = new CreateAuctionRequest();
-        createRequest.setTitle("Timer Test Auction");
-        createRequest.setDescription("Test");
-        createRequest.setStartTime(LocalDateTime.now());
-        createRequest.setEndTime(LocalDateTime.now().plusSeconds(5));
+        createRequest.setItemId("test-item-1");
+        createRequest.setCategoryId("test-category");
+        createRequest.setAuctionType(com.auctionflow.core.domain.valueobjects.AuctionType.ENGLISH_OPEN);
+        createRequest.setStartTime(Instant.now());
+        createRequest.setEndTime(Instant.now().plusSeconds(5));
         createRequest.setReservePrice(BigDecimal.valueOf(100));
 
         ResponseEntity<AuctionDetailsDTO> createResponse = restTemplate.postForEntity("/api/v1/auctions", createRequest, AuctionDetailsDTO.class);
         AuctionDetailsDTO auction = createResponse.getBody();
-        Long auctionId = auction.getId();
+        String auctionId = auction.getAuctionId();
 
         // Wait until auction should be closed
         await().atMost(10, java.util.concurrent.TimeUnit.SECONDS).until(() -> {
@@ -48,16 +49,17 @@ public class TimerExecutionIntegrationTest extends AbstractIntegrationTest {
     void testAntiSnipeExtension() {
         // Create auction with extension policy
         CreateAuctionRequest createRequest = new CreateAuctionRequest();
-        createRequest.setTitle("Anti-Snipe Test");
-        createRequest.setDescription("Test");
-        createRequest.setStartTime(LocalDateTime.now());
-        createRequest.setEndTime(LocalDateTime.now().plusSeconds(10));
+        createRequest.setItemId("test-item-2");
+        createRequest.setCategoryId("test-category");
+        createRequest.setAuctionType(com.auctionflow.core.domain.valueobjects.AuctionType.ENGLISH_OPEN);
+        createRequest.setStartTime(Instant.now());
+        createRequest.setEndTime(Instant.now().plusSeconds(10));
         createRequest.setReservePrice(BigDecimal.valueOf(100));
         // Assume extension policy is set, e.g., fixed_window
 
         ResponseEntity<AuctionDetailsDTO> createResponse = restTemplate.postForEntity("/api/v1/auctions", createRequest, AuctionDetailsDTO.class);
         AuctionDetailsDTO auction = createResponse.getBody();
-        Long auctionId = auction.getId();
+        String auctionId = auction.getAuctionId();
 
         // Wait until near end, say 2 seconds before
         try {
@@ -74,7 +76,7 @@ public class TimerExecutionIntegrationTest extends AbstractIntegrationTest {
 
         // Check if end time is extended
         ResponseEntity<AuctionDetailsDTO> response = restTemplate.getForEntity("/api/v1/auctions/" + auctionId, AuctionDetailsDTO.class);
-        LocalDateTime newEndTime = response.getBody().getEndTime();
+        Instant newEndTime = response.getBody().getEndTs();
         // Assert extended, e.g., newEndTime > original + extension
     }
 }
