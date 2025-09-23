@@ -16,7 +16,7 @@ import com.auctionflow.events.EventStore;
 import com.auctionflow.events.persistence.ProxyBidEntity;
 import com.auctionflow.events.persistence.ProxyBidRepository;
 import com.auctionflow.timers.AntiSnipeExtension;
-import com.auctionflow.bidding.strategies.AutomatedBiddingService;
+import com.auctionflow.events.command.AutomatedBiddingService;
 import com.auctionflow.bidding.strategies.BidDecision;
 import com.auctionflow.bidding.strategies.StrategyBidDecision;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -160,7 +160,7 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
             if (type != AuctionType.DUTCH) {
                 Instant bidTime = command.serverTs(); // Use precise server timestamp from command
                 AuctionAggregate english = (AuctionAggregate) aggregate;
-                antiSnipeExtension.applyExtensionIfNeeded(
+                AuctionExtendedEvent extensionEvent = antiSnipeExtension.calculateExtensionIfNeeded(
                     english.getId(),
                     bidTime,
                     english.getEndTime(),
@@ -168,6 +168,9 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
                     english.getAntiSnipePolicy(),
                     english.getExtensionsCount()
                 );
+                if (extensionEvent != null) {
+                    kafkaTemplate.send("auction-events", extensionEvent.getAggregateId().toString(), extensionEvent);
+                }
             }
 
             aggregate.clearDomainEvents();

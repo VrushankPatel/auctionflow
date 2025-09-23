@@ -37,7 +37,7 @@ public abstract class AggregateRoot {
         this.expectedVersion = expectedVersion;
     }
 
-    public abstract AuctionId getId();
-    public abstract AuctionStatus getStatus();
+    public abstract Object getId();
+    public abstract Object getStatus();
     public abstract Instant getEndTime();
 }

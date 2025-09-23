@@ -58,7 +58,7 @@ public class AuctionAggregate extends AggregateRoot {
         this.extensionsCount = 0;
         this.currentHighestBid = null;
         this.highestBidderId = null;
-        this.bidIncrement = new FixedBidIncrement(new Money(BigDecimal.ONE));
+        this.bidIncrement = new FixedBidIncrement(Money.usd(BigDecimal.ONE));
         this.currentSeqNo = Long.MAX_VALUE;
     }
 
@@ -268,7 +268,7 @@ public class AuctionAggregate extends AggregateRoot {
                     reserveMet = true;
                     UUID reserveEventId = UUID.randomUUID();
                     long reserveSequenceNumber = getVersion() + 1;
-                    ReserveMetEvent reserveEvent = new ReserveMetEvent(id, bid.bidderId().id(), bid.amount(), reserveEventId, bid.timestamp(), reserveSequenceNumber);
+                    ReserveMetEvent reserveEvent = new ReserveMetEvent(id, bid.bidderId(), bid.amount(), reserveEventId, bid.timestamp(), reserveSequenceNumber);
                     addDomainEvent(reserveEvent);
                 }
                 processed++;
@@ -305,7 +305,7 @@ public class AuctionAggregate extends AggregateRoot {
         if (auctionType == AuctionType.SEALED_BID) {
             // For sealed bid, winner from revealed bids: higher amount, then lower seqNo (earlier commit)
             winner = revealedBids.stream()
-                    .max(Comparator.comparing((Bid b) -> b.amount().amount(), Comparator.reverseOrder())
+                    .max(Comparator.comparing((Bid b) -> b.amount().toBigDecimal(), Comparator.reverseOrder())
                             .thenComparing(Bid::seqNo))
                     .map(bid -> new WinnerId(bid.bidderId().id()))
                     .orElse(null);
@@ -321,7 +321,7 @@ public class AuctionAggregate extends AggregateRoot {
 
     @EventHandler
     public void apply(AuctionCreatedEvent event) {
-        this.id = event.getAggregateId();
+        this.id = (AuctionId) event.getAggregateId();
         this.itemId = event.getItemId();
         this.auctionType = event.getAuctionType();
         this.reservePrice = event.getReservePrice();
@@ -334,7 +334,7 @@ public class AuctionAggregate extends AggregateRoot {
         this.antiSnipePolicy = event.getAntiSnipePolicy();
         this.status = event.getAuctionType() == AuctionType.SEALED_BID ? AuctionStatus.SEALED_BIDDING : AuctionStatus.OPEN;
         this.currentHighestBid = event.getReservePrice();
-        this.bidIncrement = new FixedBidIncrement(new Money(BigDecimal.ONE));
+        this.bidIncrement = new FixedBidIncrement(Money.usd(BigDecimal.ONE));
         this.currentSeqNo = Long.MAX_VALUE;
     }
 

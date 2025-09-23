@@ -6,19 +6,6 @@ public interface BidIncrement {
     Money nextBid(Money currentHighest);
 }
 
-public class FixedBidIncrement implements BidIncrement {
-    private final Money increment;
-
-    public FixedBidIncrement(Money increment) {
-        this.increment = increment;
-    }
-
-    @Override
-    public Money nextBid(Money currentHighest) {
-        return currentHighest.add(increment);
-    }
-}
-
 class PercentageBidIncrement implements BidIncrement {
     private final BigDecimal percentage;
 

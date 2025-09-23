@@ -85,7 +85,7 @@ public class OfferAggregate extends AggregateRoot {
 
     @EventHandler
     public void apply(OfferCreatedEvent event) {
-        this.id = event.getAggregateId();
+        this.id = (OfferId) event.getAggregateId();
         this.auctionId = event.getAuctionId();
         this.buyerId = event.getBuyerId();
         this.sellerId = event.getSellerId();
@@ -111,4 +111,7 @@ public class OfferAggregate extends AggregateRoot {
     public Money getAmount() { return amount; }
     public OfferStatus getStatus() { return status; }
     public Instant getCreatedAt() { return createdAt; }
+
+    @Override
+    public Instant getEndTime() { return null; } // Offers don't have end time
 }

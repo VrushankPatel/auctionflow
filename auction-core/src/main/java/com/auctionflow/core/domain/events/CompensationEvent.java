@@ -1,5 +1,6 @@
 package com.auctionflow.core.domain.events;
 
+import com.auctionflow.core.domain.aggregates.AggregateRoot;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
 
 import java.time.Instant;

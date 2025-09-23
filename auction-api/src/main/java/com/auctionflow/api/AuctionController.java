@@ -551,6 +551,32 @@ public class AuctionController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/{id}/offers")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+        summary = "Make an offer on an auction",
+        description = "Submits an offer for the auction item."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Offer made successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid offer", content = @Content),
+        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+        @ApiResponse(responseCode = "404", description = "Auction not found", content = @Content)
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<Void> makeOffer(
+        @PathVariable String id,
+        @Valid @RequestBody MakeOfferRequest request) {
+        AuctionId auctionId = new AuctionId(id);
+        UUID buyerId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        // TODO: get sellerId from auction
+        SellerId sellerId = new SellerId(UUID.randomUUID()); // Placeholder
+        Money amount = Money.usd(request.getAmount());
+        MakeOfferCommand cmd = new MakeOfferCommand(auctionId, new BidderId(buyerId), sellerId, amount);
+        commandBus.send(cmd);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/{id}/watch")
     @PreAuthorize("isAuthenticated()")
     @Operation(

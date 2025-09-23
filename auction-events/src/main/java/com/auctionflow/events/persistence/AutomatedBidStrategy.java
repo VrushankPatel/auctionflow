@@ -1,5 +1,6 @@
-package com.auctionflow.bidding.strategies;
+package com.auctionflow.events.persistence;
 
+import com.auctionflow.bidding.strategies.StrategyType;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.BidderId;
 import com.auctionflow.core.domain.valueobjects.Money;
@@ -19,7 +20,7 @@ public class AutomatedBidStrategy {
     private Long id;
 
     @Column(name = "auction_id", nullable = false)
-    private Long auctionId;
+    private String auctionId;
 
     @Column(name = "bidder_id", nullable = false)
     private String bidderId;
@@ -49,7 +50,7 @@ public class AutomatedBidStrategy {
 
     public AutomatedBidStrategy(AuctionId auctionId, BidderId bidderId, StrategyType strategyType,
                                Map<String, Object> parameters, Money maxBid) {
-        this.auctionId = auctionId.value();
+        this.auctionId = auctionId.toString();
         this.bidderId = bidderId.toString();
         this.strategyType = strategyType;
         this.parametersJson = serializeParameters(parameters);
@@ -68,8 +69,8 @@ public class AutomatedBidStrategy {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public Long getAuctionId() { return auctionId; }
-    public void setAuctionId(Long auctionId) { this.auctionId = auctionId; }
+    public String getAuctionId() { return auctionId; }
+    public void setAuctionId(String auctionId) { this.auctionId = auctionId; }
 
     public String getBidderId() { return bidderId; }
     public void setBidderId(String bidderId) { this.bidderId = bidderId; }

@@ -1,8 +1,11 @@
-package com.auctionflow.bidding.strategies;
+package com.auctionflow.events.command;
 
+import com.auctionflow.bidding.strategies.*;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.BidderId;
 import com.auctionflow.core.domain.valueobjects.Money;
+import com.auctionflow.events.persistence.AutomatedBidStrategy;
+import com.auctionflow.events.persistence.AutomatedBidStrategyRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -42,7 +45,7 @@ public class AutomatedBiddingService {
      * Evaluate all active strategies for an auction and return bidding decisions with strategy info
      */
     public List<StrategyBidDecision> evaluateStrategies(AuctionId auctionId, Money currentHighestBid, Instant auctionEndTime) {
-        List<AutomatedBidStrategy> activeStrategies = strategyRepository.findActiveByAuctionId(auctionId.value());
+        List<AutomatedBidStrategy> activeStrategies = strategyRepository.findActiveByAuctionId(auctionId.toString());
 
         return activeStrategies.stream()
             .map(strategy -> {

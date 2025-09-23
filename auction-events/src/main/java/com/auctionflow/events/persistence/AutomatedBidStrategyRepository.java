@@ -1,4 +1,4 @@
-package com.auctionflow.bidding.strategies;
+package com.auctionflow.events.persistence;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,7 +12,7 @@ import java.util.List;
 public interface AutomatedBidStrategyRepository extends JpaRepository<AutomatedBidStrategy, Long> {
 
     @Query("SELECT s FROM AutomatedBidStrategy s WHERE s.auctionId = :auctionId AND s.isActive = true")
-    List<AutomatedBidStrategy> findActiveByAuctionId(@Param("auctionId") Long auctionId);
+    List<AutomatedBidStrategy> findActiveByAuctionId(@Param("auctionId") String auctionId);
 
     List<AutomatedBidStrategy> findByBidderIdAndIsActive(String bidderId, boolean isActive);
 

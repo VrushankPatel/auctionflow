@@ -4,7 +4,7 @@ import com.auctionflow.core.domain.events.AuctionExtendedEvent;
 import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.core.domain.valueobjects.AntiSnipePolicy;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
-import com.auctionflow.events.publisher.KafkaEventPublisher;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -25,17 +25,15 @@ public class AntiSnipeExtension {
     private static final Logger logger = LoggerFactory.getLogger(AntiSnipeExtension.class);
 
     private final HierarchicalTimingWheel timingWheel;
-    private final KafkaEventPublisher eventPublisher;
     private final AuctionTimerService timerService; // Assume this exists or will be created
 
-    public AntiSnipeExtension(HierarchicalTimingWheel timingWheel, KafkaEventPublisher eventPublisher, AuctionTimerService timerService) {
+    public AntiSnipeExtension(HierarchicalTimingWheel timingWheel, AuctionTimerService timerService) {
         this.timingWheel = timingWheel;
-        this.eventPublisher = eventPublisher;
         this.timerService = timerService;
     }
 
     /**
-     * Checks if extension should apply for a bid and applies it if necessary.
+     * Checks if extension should apply for a bid and calculates the extension event if necessary.
      *
      * @param auctionId the auction ID
      * @param bidTime the time the bid was placed
@@ -43,27 +41,27 @@ public class AntiSnipeExtension {
      * @param originalDuration the original duration of the auction
      * @param policy the anti-snipe policy
      * @param currentExtensions the current number of extensions applied
-     * @return true if extension was applied, false otherwise
+     * @return the AuctionExtendedEvent if extension should be applied, null otherwise
      */
-    public boolean applyExtensionIfNeeded(AuctionId auctionId, Instant bidTime, Instant currentEndTime,
+    public AuctionExtendedEvent calculateExtensionIfNeeded(AuctionId auctionId, Instant bidTime, Instant currentEndTime,
                                           Duration originalDuration, AntiSnipePolicy policy, long currentExtensions) {
         // Check if bid is within extension window
         Duration timeToEnd = Duration.between(bidTime, currentEndTime);
         if (timeToEnd.isNegative() || timeToEnd.compareTo(policy.extensionWindow()) > 0) {
             // Bid is not within extension window
-            return false;
+            return null;
         }
 
         // Check if should extend
         if (!policy.shouldExtend(currentExtensions)) {
             logger.info("Max extensions reached for auction {}, not extending", auctionId);
-            return false;
+            return null;
         }
 
         // Calculate extension duration
         Duration extension = policy.calculateExtension(originalDuration);
         if (extension.isZero()) {
-            return false;
+            return null;
         }
 
         // Calculate new end time
@@ -72,7 +70,7 @@ public class AntiSnipeExtension {
         // Reschedule timer
         timerService.rescheduleAuctionClose(auctionId, newEndTime);
 
-        // Emit AuctionExtendedEvent
+        // Create AuctionExtendedEvent
         AuctionExtendedEvent event = new AuctionExtendedEvent(
             auctionId,
             newEndTime,
@@ -80,9 +78,8 @@ public class AntiSnipeExtension {
             Instant.now(),
             0 // sequence number, might need to be managed properly
         );
-        eventPublisher.publish(event);
 
-        logger.info("Extended auction {} to new end time {}", auctionId, newEndTime);
-        return true;
+        logger.info("Calculated extension for auction {} to new end time {}", auctionId, newEndTime);
+        return event;
     }
 }

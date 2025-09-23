@@ -151,7 +151,7 @@ public class DutchAuctionAggregate extends AggregateRoot {
 
     @EventHandler
     public void apply(AuctionCreatedEvent event) {
-        this.id = event.getAggregateId();
+        this.id = (AuctionId) event.getAggregateId();
         this.itemId = event.getItemId();
         this.auctionType = event.getAuctionType();
         this.startingPrice = event.getReservePrice();
