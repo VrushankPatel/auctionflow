@@ -214,6 +214,42 @@ Submit a bid for an auction.
 }
 ```
 
+### Place Bulk Bids
+
+Submit multiple bids for an auction in a single request.
+
+**Endpoint:** `POST /auctions/{id}/bulk-bids`
+
+**Request Body:**
+```json
+[
+  {
+    "amount": 200.00,
+    "idempotency_key": "optional-uuid-1"
+  },
+  {
+    "amount": 210.00,
+    "idempotency_key": "optional-uuid-2"
+  }
+]
+```
+
+**Response:**
+```json
+[
+  {
+    "accepted": true,
+    "server_ts": "2024-01-01T10:45:00.789Z",
+    "seq_no": 12346
+  },
+  {
+    "accepted": true,
+    "server_ts": "2024-01-01T10:45:01.000Z",
+    "seq_no": 12347
+  }
+]
+```
+
 ### Get Auction Bids
 
 Retrieve historical bids for an auction.
