@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 public class TimerHealthIndicator implements HealthIndicator {
 
     @Autowired
-    private AuctionTimerService auctionTimerService;
+    private com.auctionflow.common.service.AuctionTimerService auctionTimerService;
 
     @Autowired
     private HierarchicalTimingWheel timingWheel;

@@ -1,5 +1,6 @@
 package com.auctionflow.events.publisher;
 
+import com.auctionflow.common.service.EventPublisher;
 import com.auctionflow.core.domain.events.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
 @Component
-public class KafkaEventPublisher {
+public class KafkaEventPublisher implements EventPublisher {
 
     private static final Logger logger = LoggerFactory.getLogger(KafkaEventPublisher.class);
 
@@ -31,14 +32,10 @@ public class KafkaEventPublisher {
         String topic = determineTopic(event);
         String key = event.getEventId().toString();
 
-        kafkaTemplate.send(topic, key, event).addCallback(new ListenableFutureCallback<SendResult<String, DomainEvent>>() {
-            @Override
-            public void onSuccess(SendResult<String, DomainEvent> result) {
+        kafkaTemplate.send(topic, key, event).whenComplete((result, ex) -> {
+            if (ex == null) {
                 logger.info("Successfully published event {} to topic {}", event.getEventId(), topic);
-            }
-
-            @Override
-            public void onFailure(Throwable ex) {
+            } else {
                 logger.error("Failed to publish event {} to topic {}", event.getEventId(), topic, ex);
                 sendToDLQ(event, ex);
             }
@@ -49,14 +46,10 @@ public class KafkaEventPublisher {
         String topic = SECURITY_EVENTS_TOPIC;
         String key = event.getEventId().toString();
 
-        securityKafkaTemplate.send(topic, key, event).addCallback(new ListenableFutureCallback<SendResult<String, SecurityEvent>>() {
-            @Override
-            public void onSuccess(SendResult<String, SecurityEvent> result) {
+        securityKafkaTemplate.send(topic, key, event).whenComplete((result, ex) -> {
+            if (ex == null) {
                 logger.info("Successfully published security event {} to topic {}", event.getEventId(), topic);
-            }
-
-            @Override
-            public void onFailure(Throwable ex) {
+            } else {
                 logger.error("Failed to publish security event {} to topic {}", event.getEventId(), topic, ex);
                 sendSecurityToDLQ(event, ex);
             }
@@ -102,14 +95,10 @@ public class KafkaEventPublisher {
      * @param key the key to tombstone
      */
     public void sendTombstone(String topic, String key) {
-        kafkaTemplate.send(topic, key, null).addCallback(new ListenableFutureCallback<SendResult<String, DomainEvent>>() {
-            @Override
-            public void onSuccess(SendResult<String, DomainEvent> result) {
+        kafkaTemplate.send(topic, key, null).whenComplete((result, ex) -> {
+            if (ex == null) {
                 logger.info("Successfully sent tombstone for key {} to topic {}", key, topic);
-            }
-
-            @Override
-            public void onFailure(Throwable ex) {
+            } else {
                 logger.error("Failed to send tombstone for key {} to topic {}", key, topic, ex);
             }
         });

@@ -3,4 +3,6 @@ dependencies {
     implementation 'org.redisson:redisson-spring-boot-starter:3.17.0'
     implementation 'io.getunleash:unleash-client-java:9.2.0'
     implementation project(':auction-core')
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }

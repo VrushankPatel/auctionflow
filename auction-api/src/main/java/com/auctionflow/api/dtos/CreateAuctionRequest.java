@@ -4,8 +4,8 @@ import com.auctionflow.core.domain.valueobjects.AuctionType;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 
 @Valid
 public class CreateAuctionRequest {

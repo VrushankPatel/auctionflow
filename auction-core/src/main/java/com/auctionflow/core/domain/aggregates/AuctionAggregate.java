@@ -411,6 +411,11 @@ public class AuctionAggregate extends AggregateRoot {
         this.reserveMet = true;
     }
 
+    @Override
+    public void handle(Object command) {
+        // TODO: implement command dispatching
+    }
+
     // Getters for testing or external access
     public AuctionId getId() { return id; }
     public AuctionType getAuctionType() { return auctionType; }
@@ -426,4 +431,6 @@ public class AuctionAggregate extends AggregateRoot {
     /** Returns the bid increment strategy for this auction. */
     public BidIncrement getBidIncrement() { return bidIncrement; }
     public SellerId getSellerId() { return sellerId; }
+
+
 }

@@ -10,4 +10,6 @@ import java.util.List;
 public interface BatchedNotificationRepository extends JpaRepository<BatchedNotification, Long> {
 
     List<BatchedNotification> findByUserIdAndSent(String userId, boolean sent);
+
+    List<BatchedNotification> findBySent(boolean sent);
 }

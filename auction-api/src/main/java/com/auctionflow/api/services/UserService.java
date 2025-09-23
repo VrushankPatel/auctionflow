@@ -53,7 +53,8 @@ public class UserService implements UserDetailsService {
     private final TimeProvider timeProvider = new SystemTimeProvider();
     private final CodeVerifier codeVerifier = new DefaultCodeVerifier(new DefaultCodeGenerator(), timeProvider);
 
-    public User register(String email, String displayName, String password, User.Role role) {
+    public User createUser(String email, String displayName, String password, String roleStr) {
+        User.Role role = User.Role.valueOf(roleStr.toUpperCase());
         if (userRepository.findByEmail(email).isPresent()) {
             throw new RuntimeException("User already exists");
         }

@@ -15,12 +15,12 @@ import java.util.UUID;
 @Repository
 public interface ProxyBidRepository extends JpaRepository<ProxyBid, Long> {
 
-    Optional<ProxyBid> findByAuctionIdAndUserId(Long auctionId, UUID userId);
+    Optional<ProxyBid> findByAuctionIdAndUserId(String auctionId, UUID userId);
 
-    List<ProxyBid> findByAuctionIdAndStatus(Long auctionId, String status);
+    List<ProxyBid> findByAuctionIdAndStatus(String auctionId, String status);
 
     @Query("SELECT pb FROM ProxyBid pb WHERE pb.auctionId = :auctionId AND pb.status = 'ACTIVE' AND pb.maxBid > :currentHighestBid ORDER BY pb.maxBid DESC")
-    List<ProxyBid> findActiveProxyBidsHigherThan(@Param("auctionId") Long auctionId, @Param("currentHighestBid") BigDecimal currentHighestBid);
+    List<ProxyBid> findActiveProxyBidsHigherThan(@Param("auctionId") String auctionId, @Param("currentHighestBid") BigDecimal currentHighestBid);
 
     @Modifying
     @Query("UPDATE ProxyBid pb SET pb.status = :status WHERE pb.id = :id")

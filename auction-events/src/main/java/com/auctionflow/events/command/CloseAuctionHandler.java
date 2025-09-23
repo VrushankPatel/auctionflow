@@ -8,7 +8,7 @@ import com.auctionflow.core.domain.commands.CloseAuctionCommand;
 import com.auctionflow.core.domain.events.AuctionCreatedEvent;
 import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.core.domain.valueobjects.AuctionType;
-import com.auctionflow.events.EventStore;
+import com.auctionflow.common.service.EventStore;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.context.event.EventListener;

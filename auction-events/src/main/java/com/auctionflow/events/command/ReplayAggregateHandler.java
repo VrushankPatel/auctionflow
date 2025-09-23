@@ -24,7 +24,7 @@ public class ReplayAggregateHandler {
         AuctionId aggregateId = command.aggregateId();
         Instant fromTimestamp = command.fromTimestamp();
 
-        AuctionAggregate aggregate = new AuctionAggregate(aggregateId);
+        AuctionAggregate aggregate = new AuctionAggregate();
 
         if (fromTimestamp != null) {
             return replayService.rebuildAggregateFromTimestamp(aggregateId, fromTimestamp, aggregate);

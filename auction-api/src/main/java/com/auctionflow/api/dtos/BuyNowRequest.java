@@ -1,6 +1,6 @@
 package com.auctionflow.api.dtos;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 public class BuyNowRequest {
     @NotNull

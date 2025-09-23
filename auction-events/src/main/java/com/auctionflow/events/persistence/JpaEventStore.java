@@ -3,7 +3,7 @@ package com.auctionflow.events.persistence;
 import com.auctionflow.common.exceptions.OptimisticLockException;
 import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
-import com.auctionflow.events.EventStore;
+import com.auctionflow.common.service.EventStore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
@@ -25,7 +25,7 @@ public class JpaEventStore implements EventStore {
     @Override
     public void save(List<DomainEvent> events, long expectedVersion) {
         if (!events.isEmpty()) {
-            String aggregateId = events.get(0).getAggregateId().value().toString();
+            String aggregateId = ((AuctionId) events.get(0).getAggregateId()).value().toString();
             Long currentMaxSeq = eventRepository.findMaxSequenceNumberByAggregateId(aggregateId);
             long currentVersion = currentMaxSeq != null ? currentMaxSeq : 0;
             if (currentVersion != expectedVersion) {
@@ -84,7 +84,7 @@ public class JpaEventStore implements EventStore {
         try {
             String eventData = objectMapper.writeValueAsString(event);
             return new EventEntity(
-                    event.getAggregateId().value().toString(),
+                    ((AuctionId) event.getAggregateId()).value().toString(),
                     "auction", // aggregateType
                     event.getClass().getSimpleName(),
                     eventData,

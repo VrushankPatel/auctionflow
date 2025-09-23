@@ -4,10 +4,12 @@ plugins {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.flywaydb:flyway-core'
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+     implementation 'org.springframework.boot:spring-boot-starter-web'
+     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+     implementation 'org.springframework.boot:spring-boot-starter-validation'
+     implementation 'org.flywaydb:flyway-core'
+     implementation 'com.vladmihalcea:hibernate-types-60:2.21.1'
+     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'com.github.ben-manes.caffeine:caffeine'
     implementation 'org.springframework.boot:spring-boot-starter-hateoas'
@@ -21,16 +23,17 @@ dependencies {
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
     implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
     implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
-    implementation 'io.github.resilience4j:resilience4j-ratelimiter'
-    implementation 'io.github.resilience4j:resilience4j-circuitbreaker'
-    implementation 'io.github.resilience4j:resilience4j-ratelimiter-redis'
+      implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.0.2'
+      implementation 'io.github.resilience4j:resilience4j-ratelimiter:2.0.2'
+      implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.0.2'
      implementation 'dev.samstevens.totp:totp:1.7.1'
+     implementation 'io.getunleash:unleash-client-java:8.2.0'
      implementation platform('io.opentelemetry:opentelemetry-bom:1.32.0')
      implementation 'io.opentelemetry:opentelemetry-api'
      implementation 'io.opentelemetry:opentelemetry-sdk'
      implementation 'io.opentelemetry:opentelemetry-exporter-jaeger'
      implementation 'io.opentelemetry:opentelemetry-extension-annotations'
-     implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'
+       // implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'
      implementation 'net.logstash.logback:logstash-logback-encoder:7.3'
       implementation project(':auction-core')
      implementation project(':auction-common')

@@ -28,7 +28,7 @@ import com.auctionflow.core.domain.valueobjects.SellerId;
 import com.auctionflow.events.command.CommandBus;
 import io.github.resilience4j.ratelimiter.RateLimiter;
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
-import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+// import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.getunleash.UnleashContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -38,18 +38,20 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.opentelemetry.instrumentation.annotations.WithSpan;
+// import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Currency;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -168,11 +170,11 @@ public class AuctionController {
             return ResponseEntity.badRequest().build(); // Or return reason
         }
 
-        ItemId itemId = new ItemId(request.getItemId());
-        SellerId sellerId = new SellerId(user.getId());
-        Money reservePrice = new Money(request.getReservePrice());
-        Money buyNowPrice = new Money(request.getBuyNowPrice());
-        CreateAuctionCommand cmd = new CreateAuctionCommand(itemId, sellerId, request.getCategoryId(), request.getAuctionType(), reservePrice, buyNowPrice, request.getStartTime(), request.getEndTime(), AntiSnipePolicy.NONE, request.isHiddenReserve()); // Assuming default policy
+        ItemId itemId = new ItemId(UUID.fromString(request.getItemId()));
+        SellerId sellerId = new SellerId(UUID.fromString(user.getId().toString()));
+        Money reservePrice = Money.usd(request.getReservePrice());
+        Money buyNowPrice = Money.usd(request.getBuyNowPrice());
+        CreateAuctionCommand cmd = new CreateAuctionCommand(itemId, sellerId, request.getCategoryId(), request.getAuctionType(), reservePrice, buyNowPrice, request.getStartTime(), request.getEndTime(), AntiSnipePolicy.none(), request.isHiddenReserve()); // Assuming default policy
         commandBus.send(cmd);
         return ResponseEntity.ok().build();
     }
@@ -213,7 +215,7 @@ public class AuctionController {
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Void> updateAuction(@PathVariable String id, @RequestBody UpdateAuctionRequest request) {
         // Assume UpdateAuctionCommand exists
-        UpdateAuctionCommand cmd = new UpdateAuctionCommand(new AuctionId(id), request.getTitle(), request.getDescription());
+        UpdateAuctionCommand cmd = new UpdateAuctionCommand(new AuctionId(UUID.fromString(id)), request.getTitle(), request.getDescription());
         commandBus.send(cmd);
         return ResponseEntity.ok().build();
     }
@@ -248,7 +250,7 @@ public class AuctionController {
 
     @PostMapping("/{id}/bids")
     @PreAuthorize("@auctionSecurityService.canBid(#id, authentication.principal)")
-    @WithSpan("place-bid")
+    // @WithSpan("place-bid")
     @Operation(
         summary = "Place a bid on an auction",
         description = "Places a bid on the specified auction. Bids are processed with server timestamp and sequence number for fairness."
@@ -283,7 +285,7 @@ public class AuctionController {
         @Valid @RequestBody PlaceBidRequest request,
         HttpServletRequest httpRequest,
         HttpServletResponse response) {
-        AuctionId auctionId = new AuctionId(id);
+        AuctionId auctionId = new AuctionId(UUID.fromString(id));
         UUID bidderId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String clientIp = getClientIp(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
@@ -307,19 +309,19 @@ public class AuctionController {
         suspiciousActivityService.checkForSuspiciousActivity(bidderId.toString(), clientIp, userAgent, "BID_PLACEMENT");
 
         // Check rate limits
-        RateLimiter perUserLimiter = rateLimiterRegistry.rateLimiter("perUser");
-        RateLimiter perIpLimiter = rateLimiterRegistry.rateLimiter("perIp");
-        RateLimiter perAuctionLimiter = rateLimiterRegistry.rateLimiter("perAuction");
+        io.github.resilience4j.ratelimiter.RateLimiter perUserLimiter = rateLimiterRegistry.rateLimiter("perUser");
+        io.github.resilience4j.ratelimiter.RateLimiter perIpLimiter = rateLimiterRegistry.rateLimiter("perIp");
+        io.github.resilience4j.ratelimiter.RateLimiter perAuctionLimiter = rateLimiterRegistry.rateLimiter("perAuction");
 
-        if (!perUserLimiter.acquirePermission(bidderId.toString())) {
+        if (!perUserLimiter.acquirePermission(bidderId.toString().hashCode())) {
             addRateLimitHeaders(response, perUserLimiter, bidderId.toString());
             return ResponseEntity.status(429).build();
         }
-        if (!perIpLimiter.acquirePermission(clientIp)) {
+        if (!perIpLimiter.acquirePermission(clientIp.hashCode())) {
             addRateLimitHeaders(response, perIpLimiter, clientIp);
             return ResponseEntity.status(429).build();
         }
-        if (!perAuctionLimiter.acquirePermission(id)) {
+        if (!perAuctionLimiter.acquirePermission(id.hashCode())) {
             addRateLimitHeaders(response, perAuctionLimiter, id);
             return ResponseEntity.status(429).build();
         }
@@ -334,18 +336,18 @@ public class AuctionController {
         PlaceBidCommand cmd = new PlaceBidCommand(auctionId, bidderId, amount, idempotencyKey, serverTs, seqNo);
         try {
             commandBus.send(cmd);
-            BidResponse response = new BidResponse();
-            response.setAccepted(true);
-            response.setServerTimestamp(serverTs);
-            response.setSequenceNumber(seqNo);
-            return ResponseEntity.ok(response);
+            BidResponse bidResponse = new BidResponse();
+            bidResponse.setAccepted(true);
+            bidResponse.setServerTimestamp(serverTs);
+            bidResponse.setSequenceNumber(seqNo);
+            return ResponseEntity.ok(bidResponse);
         } catch (Exception e) {
             // If synchronous validation fails, return rejected
-            BidResponse response = new BidResponse();
-            response.setAccepted(false);
-            response.setServerTimestamp(serverTs);
-            response.setSequenceNumber(seqNo);
-            return ResponseEntity.ok(response);
+            BidResponse rejectedResponse = new BidResponse();
+            rejectedResponse.setAccepted(false);
+            rejectedResponse.setServerTimestamp(serverTs);
+            rejectedResponse.setSequenceNumber(seqNo);
+            return ResponseEntity.ok(rejectedResponse);
         }
     }
 
@@ -380,16 +382,16 @@ public class AuctionController {
             )
         )
         @Valid @RequestBody PlaceBidRequest request) {
-        AuctionId auctionId = new AuctionId(id);
+        AuctionId auctionId = new AuctionId(UUID.fromString(id));
         UUID userId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Money maxBid = new Money(request.getAmount());
+        Money maxBid = Money.usd(request.getAmount());
         proxyBidService.setProxyBid(userId, auctionId, maxBid);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/commits")
     @PreAuthorize("@auctionSecurityService.canBid(#id, authentication.principal)")
-    @WithSpan("commit-bid")
+    // @WithSpan("commit-bid")
     @Operation(
         summary = "Commit a bid hash for sealed auction",
         description = "Commits a bid hash for a sealed-bid auction during the bidding phase."
@@ -407,7 +409,7 @@ public class AuctionController {
         @Valid @RequestBody CommitBidRequest request,
         HttpServletRequest httpRequest,
         HttpServletResponse response) {
-        AuctionId auctionId = new AuctionId(id);
+        AuctionId auctionId = new AuctionId(UUID.fromString(id));
         UUID bidderId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
         String clientIp = getClientIp(httpRequest);
@@ -417,19 +419,19 @@ public class AuctionController {
         suspiciousActivityService.checkForSuspiciousActivity(bidderId.toString(), clientIp, userAgent, "BID_COMMIT");
 
         // Rate limits similar to placeBid
-        RateLimiter perUserLimiter = rateLimiterRegistry.rateLimiter("perUser");
-        RateLimiter perIpLimiter = rateLimiterRegistry.rateLimiter("perIp");
-        RateLimiter perAuctionLimiter = rateLimiterRegistry.rateLimiter("perAuction");
+        io.github.resilience4j.ratelimiter.RateLimiter perUserLimiter = rateLimiterRegistry.rateLimiter("perUser");
+        io.github.resilience4j.ratelimiter.RateLimiter perIpLimiter = rateLimiterRegistry.rateLimiter("perIp");
+        io.github.resilience4j.ratelimiter.RateLimiter perAuctionLimiter = rateLimiterRegistry.rateLimiter("perAuction");
 
-        if (!perUserLimiter.acquirePermission(bidderId.toString())) {
+        if (!perUserLimiter.acquirePermission(bidderId.toString().hashCode())) {
             addRateLimitHeaders(response, perUserLimiter, bidderId.toString());
             return ResponseEntity.status(429).build();
         }
-        if (!perIpLimiter.acquirePermission(clientIp)) {
+        if (!perIpLimiter.acquirePermission(clientIp.hashCode())) {
             addRateLimitHeaders(response, perIpLimiter, clientIp);
             return ResponseEntity.status(429).build();
         }
-        if (!perAuctionLimiter.acquirePermission(id)) {
+        if (!perAuctionLimiter.acquirePermission(id.hashCode())) {
             addRateLimitHeaders(response, perAuctionLimiter, id);
             return ResponseEntity.status(429).build();
         }
@@ -445,7 +447,7 @@ public class AuctionController {
 
     @PostMapping("/{id}/reveals")
     @PreAuthorize("@auctionSecurityService.canBid(#id, authentication.principal)")
-    @WithSpan("reveal-bid")
+    // @WithSpan("reveal-bid")
     @Operation(
         summary = "Reveal a bid for sealed auction",
         description = "Reveals the actual bid amount for a sealed-bid auction during the reveal phase."
@@ -463,7 +465,7 @@ public class AuctionController {
         @Valid @RequestBody RevealBidRequest request,
         HttpServletRequest httpRequest,
         HttpServletResponse response) {
-        AuctionId auctionId = new AuctionId(id);
+        AuctionId auctionId = new AuctionId(UUID.fromString(id));
         UUID bidderId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
         String clientIp = getClientIp(httpRequest);
@@ -473,19 +475,19 @@ public class AuctionController {
         suspiciousActivityService.checkForSuspiciousActivity(bidderId.toString(), clientIp, userAgent, "BID_REVEAL");
 
         // Rate limits
-        RateLimiter perUserLimiter = rateLimiterRegistry.rateLimiter("perUser");
-        RateLimiter perIpLimiter = rateLimiterRegistry.rateLimiter("perIp");
-        RateLimiter perAuctionLimiter = rateLimiterRegistry.rateLimiter("perAuction");
+        io.github.resilience4j.ratelimiter.RateLimiter perUserLimiter = rateLimiterRegistry.rateLimiter("perUser");
+        io.github.resilience4j.ratelimiter.RateLimiter perIpLimiter = rateLimiterRegistry.rateLimiter("perIp");
+        io.github.resilience4j.ratelimiter.RateLimiter perAuctionLimiter = rateLimiterRegistry.rateLimiter("perAuction");
 
-        if (!perUserLimiter.acquirePermission(bidderId.toString())) {
+        if (!perUserLimiter.acquirePermission(bidderId.toString().hashCode())) {
             addRateLimitHeaders(response, perUserLimiter, bidderId.toString());
             return ResponseEntity.status(429).build();
         }
-        if (!perIpLimiter.acquirePermission(clientIp)) {
+        if (!perIpLimiter.acquirePermission(clientIp.hashCode())) {
             addRateLimitHeaders(response, perIpLimiter, clientIp);
             return ResponseEntity.status(429).build();
         }
-        if (!perAuctionLimiter.acquirePermission(id)) {
+        if (!perAuctionLimiter.acquirePermission(id.hashCode())) {
             addRateLimitHeaders(response, perAuctionLimiter, id);
             return ResponseEntity.status(429).build();
         }
@@ -549,7 +551,7 @@ public class AuctionController {
             )
         )
         @Valid @RequestBody BuyNowRequest request) {
-        AuctionId auctionId = new AuctionId(id);
+        AuctionId auctionId = new AuctionId(UUID.fromString(id));
         UUID buyerId = UUID.fromString(request.getUserId());
         BuyNowCommand cmd = new BuyNowCommand(auctionId, buyerId);
         commandBus.send(cmd);
@@ -572,7 +574,7 @@ public class AuctionController {
     public ResponseEntity<Void> makeOffer(
         @PathVariable String id,
         @Valid @RequestBody MakeOfferRequest request) {
-        AuctionId auctionId = new AuctionId(id);
+        AuctionId auctionId = new AuctionId(UUID.fromString(id));
         UUID buyerId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         // Get sellerId from auction aggregate
         GetAuctionDetailsQuery query = new GetAuctionDetailsQuery(id);
@@ -623,7 +625,7 @@ public class AuctionController {
             )
         )
         @Valid @RequestBody WatchRequest request) {
-        AuctionId auctionId = new AuctionId(id);
+        AuctionId auctionId = new AuctionId(UUID.fromString(id));
         UUID userId = UUID.fromString(request.getUserId());
         WatchCommand cmd = new WatchCommand(auctionId, userId);
         commandBus.send(cmd);
@@ -644,7 +646,7 @@ public class AuctionController {
     })
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Void> closeAuction(@PathVariable String id) {
-        CloseAuctionCommand cmd = new CloseAuctionCommand(new AuctionId(id));
+        CloseAuctionCommand cmd = new CloseAuctionCommand(new AuctionId(UUID.fromString(id)));
         commandBus.send(cmd);
         return ResponseEntity.ok().build();
     }
@@ -680,7 +682,7 @@ public class AuctionController {
             )
         )
         @Valid @RequestBody WatchRequest request) {
-        AuctionId auctionId = new AuctionId(id);
+        AuctionId auctionId = new AuctionId(UUID.fromString(id));
         UUID userId = UUID.fromString(request.getUserId());
         UnwatchCommand cmd = new UnwatchCommand(auctionId, userId);
         commandBus.send(cmd);
@@ -717,7 +719,7 @@ public class AuctionController {
         return ResponseEntity.ok(offers);
     }
 
-    private void addRateLimitHeaders(HttpServletResponse response, RateLimiter limiter, String key) {
+    private void addRateLimitHeaders(HttpServletResponse response, io.github.resilience4j.ratelimiter.RateLimiter limiter, String key) {
         long available = limiter.getMetrics().getAvailablePermissions();
         long limit = limiter.getRateLimiterConfig().getLimitForPeriod();
         response.addHeader("X-RateLimit-Limit", String.valueOf(limit));

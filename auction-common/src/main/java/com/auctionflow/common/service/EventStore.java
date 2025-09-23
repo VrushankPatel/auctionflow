@@ -1,4 +1,4 @@
-package com.auctionflow.events;
+package com.auctionflow.common.service;
 
 import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.core.domain.valueobjects.AuctionId;

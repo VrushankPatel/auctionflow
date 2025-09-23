@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Currency;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,8 +24,10 @@ public class ProxyBidService {
 
     @Transactional
     public ProxyBid setProxyBid(UUID userId, AuctionId auctionId, Money maxBid) {
+        String auctionIdStr = auctionId.value().toString();
+
         // Check if user already has a proxy bid for this auction
-        Optional<ProxyBid> existing = proxyBidRepository.findByAuctionIdAndUserId(auctionId.value(), userId);
+        Optional<ProxyBid> existing = proxyBidRepository.findByAuctionIdAndUserId(auctionIdStr, userId);
         if (existing.isPresent()) {
             ProxyBid proxyBid = existing.get();
             proxyBid.setMaxBid(maxBid.toBigDecimal());
@@ -32,7 +35,7 @@ public class ProxyBidService {
             return proxyBidRepository.save(proxyBid);
         } else {
             ProxyBid proxyBid = new ProxyBid();
-            proxyBid.setAuctionId(auctionId.value());
+            proxyBid.setAuctionId(auctionIdStr);
             proxyBid.setUserId(userId);
             proxyBid.setMaxBid(maxBid.toBigDecimal());
             proxyBid.setCurrentBid(BigDecimal.ZERO);
@@ -42,11 +45,11 @@ public class ProxyBidService {
     }
 
     public Optional<ProxyBid> getProxyBid(UUID userId, AuctionId auctionId) {
-        return proxyBidRepository.findByAuctionIdAndUserId(auctionId.value(), userId);
+        return proxyBidRepository.findByAuctionIdAndUserId(auctionId.value().toString(), userId);
     }
 
     public List<ProxyBid> getActiveProxyBidsForAuction(AuctionId auctionId) {
-        return proxyBidRepository.findByAuctionIdAndStatus(auctionId.value(), "ACTIVE");
+        return proxyBidRepository.findByAuctionIdAndStatus(auctionId.value().toString(), "ACTIVE");
     }
 
     @Transactional
@@ -65,7 +68,7 @@ public class ProxyBidService {
      */
     @Transactional
     public List<ProxyBid> findProxyBidsToTrigger(AuctionId auctionId, Money currentHighestBid) {
-        return proxyBidRepository.findActiveProxyBidsHigherThan(auctionId.value(), currentHighestBid.toBigDecimal());
+        return proxyBidRepository.findActiveProxyBidsHigherThan(auctionId.value().toString(), currentHighestBid.toBigDecimal());
     }
 
     /**
@@ -74,7 +77,7 @@ public class ProxyBidService {
      */
     public Money calculateNextBidAmount(Money currentHighest, Money proxyMaxBid) {
         // Simple increment: add 1 to current highest, but not exceeding max bid
-        Money nextBid = currentHighest.add(new Money(BigDecimal.ONE));
+        Money nextBid = currentHighest.add(Money.usd(BigDecimal.ONE));
         if (nextBid.isGreaterThan(proxyMaxBid)) {
             return null; // Cannot bid
         }

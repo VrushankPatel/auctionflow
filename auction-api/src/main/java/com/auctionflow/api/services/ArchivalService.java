@@ -56,11 +56,11 @@ public class ArchivalService {
             }
 
             // Move events
-            List<EventEntity> events = eventRepository.findByAggregateId(auction.getId());
-            for (EventEntity event : events) {
-                ArchivedEvent archivedEvent = mapToArchivedEvent(event);
-                archivedEventRepository.save(archivedEvent);
-            }
+            // List<EventEntity> events = eventRepository.findByAggregateId(auction.getId());
+            // for (EventEntity event : events) {
+            //     ArchivedEvent archivedEvent = mapToArchivedEvent(event);
+            //     archivedEventRepository.save(archivedEvent);
+            // }
 
             // Delete from main tables
             eventRepository.deleteByAggregateId(auction.getId());

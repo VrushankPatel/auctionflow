@@ -1,5 +1,5 @@
 plugins {
-    id 'org.springframework.boot' version '3.2.0'
+    id 'java'
     id 'org.flywaydb.flyway' version '10.0.1'
 }
 
@@ -8,16 +8,16 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.postgresql:postgresql'
-    implementation 'org.springframework.kafka:spring-kafka'
-     implementation 'org.redisson:redisson-spring-boot-starter:3.17.0'
+     implementation 'org.springframework.kafka:spring-kafka'
+      implementation 'org.redisson:redisson-spring-boot-starter:3.17.0'
+      implementation 'com.github.ben-manes.caffeine:caffeine:3.1.6'
      implementation platform('io.opentelemetry:opentelemetry-bom:1.32.0')
      implementation 'io.opentelemetry:opentelemetry-api'
      implementation 'io.opentelemetry:opentelemetry-sdk'
      implementation 'io.opentelemetry:opentelemetry-exporter-jaeger'
      implementation 'io.opentelemetry:opentelemetry-extension-annotations'
-     implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'
-     implementation project(':auction-core')
-    implementation project(':auction-common')
-     implementation project(':auction-timers')
-     implementation project(':auction-bidding-strategies')
+      // implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'
+      implementation project(':auction-core')
+      implementation project(':auction-common')
+       implementation project(':auction-bidding-strategies')
 }

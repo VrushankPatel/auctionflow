@@ -7,6 +7,9 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import java.util.Collection;
+import java.util.Collections;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -47,6 +50,11 @@ public class ConnectInterceptor implements ChannelInterceptor {
                     @Override
                     public Object getPrincipal() {
                         return userId;
+                    }
+
+                    @Override
+                    public Collection<? extends GrantedAuthority> getAuthorities() {
+                        return Collections.emptyList();
                     }
 
                     @Override

@@ -14,10 +14,14 @@ import com.auctionflow.api.queries.ListActiveAuctionsQuery;
 import com.auctionflow.api.repositories.ItemRepository;
 import com.auctionflow.api.repositories.UserRepository;
 import com.auctionflow.api.services.ItemValidationService;
+import java.util.Currency;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import com.auctionflow.api.services.UserService;
 import com.auctionflow.core.domain.commands.*;
 import com.auctionflow.core.domain.valueobjects.AntiSnipePolicy;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
+import com.auctionflow.core.domain.valueobjects.AuctionType;
 import com.auctionflow.core.domain.valueobjects.Money;
 import com.auctionflow.events.command.CommandBus;
 import org.springframework.graphql.data.method.annotation.Argument;
@@ -68,7 +72,7 @@ public class AuctionGraphQLController {
 
     @QueryMapping
     public ActiveAuctionsDTO auctions(@Argument String category, @Argument String sellerId, @Argument Integer page, @Argument Integer size) {
-        ListActiveAuctionsQuery query = new ListActiveAuctionsQuery(Optional.ofNullable(category), Optional.ofNullable(sellerId), page != null ? page : 0, size != null ? size : 10);
+        ListActiveAuctionsQuery query = new ListActiveAuctionsQuery(Optional.ofNullable(category), Optional.ofNullable(sellerId), Optional.empty(), page != null ? page : 0, size != null ? size : 10);
         return listHandler.handle(query);
     }
 
@@ -86,7 +90,7 @@ public class AuctionGraphQLController {
 
     @QueryMapping
     public User user(@Argument String id) {
-        return userRepository.findById(UUID.fromString(id)).orElse(null);
+        return userRepository.findById(Long.valueOf(id)).orElse(null);
     }
 
     @MutationMapping
@@ -98,7 +102,7 @@ public class AuctionGraphQLController {
             throw new RuntimeException("Unauthorized");
         }
 
-        Item item = itemRepository.findById(UUID.fromString(input.getItemId())).orElse(null);
+        Item item = itemRepository.findById(input.getItemId()).orElse(null);
         if (item == null) {
             throw new RuntimeException("Item not found");
         }
@@ -107,17 +111,18 @@ public class AuctionGraphQLController {
             throw new RuntimeException("Invalid item");
         }
 
-        Money reservePrice = input.getReservePrice() != null ? new Money(BigDecimal.valueOf(input.getReservePrice())) : null;
-        Money buyNowPrice = input.getBuyNowPrice() != null ? new Money(BigDecimal.valueOf(input.getBuyNowPrice())) : null;
+        Money reservePrice = input.getReservePrice() != null ? Money.usd(BigDecimal.valueOf(input.getReservePrice())) : null;
+        Money buyNowPrice = input.getBuyNowPrice() != null ? Money.usd(BigDecimal.valueOf(input.getBuyNowPrice())) : null;
         CreateAuctionCommand cmd = new CreateAuctionCommand(
             new com.auctionflow.core.domain.valueobjects.ItemId(UUID.fromString(input.getItemId())),
+            new com.auctionflow.core.domain.valueobjects.SellerId(UUID.randomUUID()),
             input.getCategoryId(),
-            input.getAuctionType(),
+            AuctionType.valueOf(input.getAuctionType()),
             reservePrice,
             buyNowPrice,
-            input.getStartTime(),
-            input.getEndTime(),
-            AntiSnipePolicy.NONE,
+            input.getStartTime().toInstant(ZoneOffset.UTC),
+            input.getEndTime().toInstant(ZoneOffset.UTC),
+            AntiSnipePolicy.none(),
             input.isHiddenReserve()
         );
         commandBus.send(cmd);
@@ -132,7 +137,7 @@ public class AuctionGraphQLController {
     public AuctionDetailsDTO placeBid(@Argument String auctionId, @Argument PlaceBidInput input) {
         UUID bidderId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Money amount = Money.usd(BigDecimal.valueOf(input.getAmount()));
-        PlaceBidCommand cmd = new PlaceBidCommand(new AuctionId(auctionId), bidderId, amount, input.getIdempotencyKey());
+        PlaceBidCommand cmd = new PlaceBidCommand(new AuctionId(UUID.fromString(auctionId)), bidderId, amount, input.getIdempotencyKey(), Instant.now(), 0L);
         commandBus.send(cmd);
         // Return updated auction
         GetAuctionDetailsQuery query = new GetAuctionDetailsQuery(auctionId);
@@ -141,14 +146,14 @@ public class AuctionGraphQLController {
 
     @MutationMapping
     public Boolean watchAuction(@Argument String auctionId, @Argument String userId) {
-        WatchCommand cmd = new WatchCommand(new AuctionId(auctionId), UUID.fromString(userId));
+        WatchCommand cmd = new WatchCommand(new AuctionId(UUID.fromString(auctionId)), UUID.fromString(userId));
         commandBus.send(cmd);
         return true;
     }
 
     @MutationMapping
     public Boolean unwatchAuction(@Argument String auctionId, @Argument String userId) {
-        UnwatchCommand cmd = new UnwatchCommand(new AuctionId(auctionId), UUID.fromString(userId));
+        UnwatchCommand cmd = new UnwatchCommand(new AuctionId(UUID.fromString(auctionId)), UUID.fromString(userId));
         commandBus.send(cmd);
         return true;
     }

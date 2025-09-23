@@ -5,9 +5,9 @@ import com.auctionflow.core.domain.commands.ReducePriceCommand;
 import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.AuctionStatus;
-import com.auctionflow.events.EventStore;
-import com.auctionflow.events.publisher.KafkaEventPublisher;
-import io.opentelemetry.instrumentation.annotations.WithSpan;
+import com.auctionflow.common.service.EventStore;
+import com.auctionflow.common.service.EventPublisher;
+// import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -25,13 +25,13 @@ public class PriceReductionTask implements TimerTask {
     private static final Logger logger = LoggerFactory.getLogger(PriceReductionTask.class);
 
     private final AuctionId auctionId;
-    private final EventStore eventStore;
-    private final KafkaEventPublisher eventPublisher;
+    private final com.auctionflow.common.service.EventStore eventStore;
+    private final com.auctionflow.common.service.EventPublisher eventPublisher;
     private final RedissonClient redissonClient;
     private final DurableScheduler durableScheduler;
     private final TimerMetrics timerMetrics;
 
-    public PriceReductionTask(AuctionId auctionId, EventStore eventStore, KafkaEventPublisher eventPublisher, RedissonClient redissonClient, DurableScheduler durableScheduler, TimerMetrics timerMetrics) {
+    public PriceReductionTask(AuctionId auctionId, com.auctionflow.common.service.EventStore eventStore, EventPublisher eventPublisher, RedissonClient redissonClient, DurableScheduler durableScheduler, TimerMetrics timerMetrics) {
         this.auctionId = auctionId;
         this.eventStore = eventStore;
         this.eventPublisher = eventPublisher;
@@ -41,7 +41,7 @@ public class PriceReductionTask implements TimerTask {
     }
 
     @Override
-    @WithSpan("execute-price-reduction-task")
+    // @WithSpan("execute-price-reduction-task")
     public void execute() {
         String lockKey = "auction:" + auctionId.value();
         RLock lock = redissonClient.getLock(lockKey);

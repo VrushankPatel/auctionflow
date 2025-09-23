@@ -1,7 +1,7 @@
 package com.auctionflow.timers;
 
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Histogram;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Component;
@@ -16,7 +16,7 @@ public class TimerMetrics {
     private final Counter executed;
     private final Counter cancelled;
     private final Timer auctionCloseLatency;
-    private final Histogram timerAccuracy;
+    private final DistributionSummary timerAccuracy;
 
     public TimerMetrics(MeterRegistry meterRegistry) {
         this.scheduled = Counter.builder("timer_tasks_scheduled_total")
@@ -31,7 +31,7 @@ public class TimerMetrics {
         this.auctionCloseLatency = Timer.builder("auction_close_duration")
                 .description("Time taken to close an auction")
                 .register(meterRegistry);
-        this.timerAccuracy = Histogram.builder("timer_accuracy_delay")
+        this.timerAccuracy = DistributionSummary.builder("timer_accuracy_delay")
                 .description("Delay in timer firing (milliseconds)")
                 .register(meterRegistry);
     }

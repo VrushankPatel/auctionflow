@@ -103,6 +103,14 @@ public class OfferAggregate extends AggregateRoot {
         this.status = OfferStatus.REJECTED;
     }
 
+    @Override
+    public void handle(Object command) {
+        // TODO: implement command dispatching
+    }
+
+    @Override
+    public Object getWinnerId() { return null; }
+
     // Getters
     public OfferId getId() { return id; }
     public AuctionId getAuctionId() { return auctionId; }
@@ -114,4 +122,9 @@ public class OfferAggregate extends AggregateRoot {
 
     @Override
     public Instant getEndTime() { return null; } // Offers don't have end time
+
+    @Override
+    public void apply(DomainEvent event) {
+        // TODO: implement event application
+    }
 }

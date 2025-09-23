@@ -1,5 +1,6 @@
 package com.auctionflow.events;
 
+import com.auctionflow.common.service.EventStore;
 import com.auctionflow.core.domain.aggregates.AggregateRoot;
 import com.auctionflow.core.domain.events.CompensationEvent;
 import com.auctionflow.core.domain.events.DomainEvent;

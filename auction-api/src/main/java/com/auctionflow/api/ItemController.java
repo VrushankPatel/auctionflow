@@ -10,7 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -43,7 +43,7 @@ public class ItemController {
         item.setCategoryId(request.getCategoryId());
         item.setBrand(request.getBrand());
         item.setSerialNumber(request.getSerialNumber());
-        item.setImages(request.getImages());
+        // item.setImages(request.getImages());
         item.setMetadata(request.getMetadata());
 
         // Validate
@@ -92,7 +92,7 @@ public class ItemController {
         item.setCategoryId(request.getCategoryId());
         item.setBrand(request.getBrand());
         item.setSerialNumber(request.getSerialNumber());
-        item.setImages(request.getImages());
+        // item.setImages(request.getImages());
         item.setMetadata(request.getMetadata());
 
         ItemValidationService.ValidationResult validation = itemValidationService.validateItem(item.getCategoryId(), item.getTitle(), item.getDescription(), item.getBrand(), item.getSerialNumber());

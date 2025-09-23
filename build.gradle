@@ -15,10 +15,33 @@ allprojects {
 
 subprojects {
     apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
 
     java {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.boot:spring-boot-dependencies:3.2.0"
+            mavenBom "io.opentelemetry:opentelemetry-bom:1.32.0"
+        }
+
+        dependencies {
+            dependency 'org.postgresql:postgresql:42.6.0'
+            dependency 'org.redisson:redisson:3.24.0'
+            dependency 'org.apache.kafka:kafka-clients:3.5.0'
+            dependency 'io.micrometer:micrometer-core:1.12.0'
+            dependency 'io.github.resilience4j:resilience4j-spring-boot3:2.1.0'
+            dependency 'org.mapstruct:mapstruct:1.5.5.Final'
+            dependency 'org.projectlombok:lombok:1.18.30'
+            dependency 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+            dependency 'org.testcontainers:junit-jupiter:1.19.0'
+            dependency 'io.getunleash:unleash-client-java:9.2.0'
+            dependency 'org.junit.jupiter:junit-jupiter:5.10.0'
+            dependency 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter:1.32.0'
+        }
     }
 
     dependencies {
@@ -27,24 +50,5 @@ subprojects {
 
     test {
         useJUnitPlatform()
-    }
-}
-
-dependencyManagement {
-    imports {
-        mavenBom "org.springframework.cloud:spring-cloud-dependencies:2023.0.0"
-    }
-
-    dependencies {
-        dependency 'org.postgresql:postgresql:42.6.0'
-        dependency 'org.redisson:redisson:3.24.0'
-        dependency 'org.apache.kafka:kafka-clients:3.5.0'
-        dependency 'io.micrometer:micrometer-core:1.12.0'
-        dependency 'io.github.resilience4j:resilience4j-spring-boot3:2.1.0'
-        dependency 'org.mapstruct:mapstruct:1.5.5.Final'
-        dependency 'org.projectlombok:lombok:1.18.30'
-        dependency 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
-        dependency 'org.testcontainers:junit-jupiter:1.19.0'
-        dependency 'io.getunleash:unleash-client-java:9.2.0'
     }
 }

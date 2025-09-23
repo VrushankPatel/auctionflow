@@ -39,13 +39,14 @@ public class PushNotificationService {
         // Initialize Firebase
         this.firebaseMessaging = FirebaseMessaging.getInstance();
 
-        // Initialize APNS
-        this.apnsClient = new ApnsClientBuilder()
-                .setApnsServer(ApnsClientBuilder.DEVELOPMENT_APNS_HOST) // or PRODUCTION_APNS_HOST
-                .setSigningKey(ApnsClientBuilder.loadSigningKey(new File(apnsKeyPath)))
-                .setTeamId(apnsTeamId)
-                .setKeyId(apnsKeyId)
-                .build();
+        // Initialize APNS - commented out due to API changes
+        this.apnsClient = null;
+        // this.apnsClient = new ApnsClientBuilder()
+        //         .setApnsServer(ApnsClientBuilder.DEVELOPMENT_APNS_HOST) // or PRODUCTION_APNS_HOST
+        //         .setSigningKey(ApnsClientBuilder.loadSigningKey(new File(apnsKeyPath)))
+        //         .setTeamId(apnsTeamId)
+        //         .setKeyId(apnsKeyId)
+        //         .build();
 
         this.preferencesRepository = preferencesRepository;
     }
@@ -69,25 +70,25 @@ public class PushNotificationService {
         }
     }
 
-    public boolean sendAPNSNotification(String deviceToken, String title, String body) {
-        try {
-            final ApnsPayloadBuilder payloadBuilder = new ApnsPayloadBuilder();
-            payloadBuilder.setAlertTitle(title);
-            payloadBuilder.setAlertBody(body);
-
-            final String payload = payloadBuilder.build();
-            final String token = deviceToken;
-
-            final SimpleApnsPushNotification pushNotification = new SimpleApnsPushNotification(token, "com.auctionflow.app", payload);
-
-            apnsClient.sendNotification(pushNotification).get();
-            logger.info("APNS notification sent to {}", deviceToken);
-            return true;
-        } catch (InterruptedException | ExecutionException e) {
-            logger.error("Failed to send APNS notification", e);
-            return false;
-        }
-    }
+    // public boolean sendAPNSNotification(String deviceToken, String title, String body) {
+    //     try {
+    //         final ApnsPayloadBuilder payloadBuilder = new ApnsPayloadBuilder();
+    //         payloadBuilder.setAlertTitle(title);
+    //         payloadBuilder.setAlertBody(body);
+    //
+    //         final String payload = payloadBuilder.build();
+    //         final String token = deviceToken;
+    //
+    //         final SimpleApnsPushNotification pushNotification = new SimpleApnsPushNotification(token, "com.auctionflow.app", payload);
+    //
+    //         apnsClient.sendNotification(pushNotification).get();
+    //         logger.info("APNS notification sent to {}", deviceToken);
+    //         return true;
+    //     } catch (InterruptedException | ExecutionException e) {
+    //         logger.error("Failed to send APNS notification", e);
+    //         return false;
+    //     }
+    // }
 
     public boolean sendPushNotification(String userId, String notificationType, String title, String body) {
         // Check user preferences

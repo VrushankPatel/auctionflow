@@ -35,14 +35,14 @@ public class AuthController {
     @Autowired
     private KafkaEventPublisher eventPublisher;
 
-    @Autowired
-    private SuspiciousActivityService suspiciousActivityService;
+    // @Autowired
+    // private SuspiciousActivityService suspiciousActivityService;
 
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody RegisterRequest registerRequest) {
         try {
             User.Role role = registerRequest.getRole() != null ? User.Role.valueOf(registerRequest.getRole().toUpperCase()) : User.Role.BUYER;
-            User user = userService.register(registerRequest.getEmail(), registerRequest.getDisplayName(), registerRequest.getPassword(), role);
+            User user = userService.createUser(registerRequest.getEmail(), registerRequest.getDisplayName(), registerRequest.getPassword(), role.name());
             Map<String, Object> response = new HashMap<>();
             response.put("message", "User registered successfully");
             response.put("userId", user.getId());
@@ -85,7 +85,7 @@ public class AuthController {
                 java.util.Map.of("attemptCount", 1) // Could track in Redis
             );
             eventPublisher.publishSecurityEvent(failedEvent);
-            suspiciousActivityService.recordFailedLogin(ipAddress);
+            // suspiciousActivityService.recordFailedLogin(ipAddress);
 
             return ResponseEntity.badRequest().body("Invalid username or password");
         }

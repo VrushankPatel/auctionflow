@@ -4,7 +4,7 @@ import com.auctionflow.common.exceptions.OptimisticLockException;
 import com.auctionflow.core.domain.aggregates.DutchAuctionAggregate;
 import com.auctionflow.core.domain.commands.ReducePriceCommand;
 import com.auctionflow.core.domain.events.DomainEvent;
-import com.auctionflow.events.EventStore;
+import com.auctionflow.common.service.EventStore;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.context.event.EventListener;

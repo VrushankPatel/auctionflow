@@ -19,7 +19,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -52,7 +52,7 @@ public class MobileController {
             @RequestParam Optional<String> sellerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        ListActiveAuctionsQuery query = new ListActiveAuctionsQuery(category, sellerId, page, size);
+        ListActiveAuctionsQuery query = new ListActiveAuctionsQuery(category, sellerId, Optional.empty(), page, size);
         ActiveAuctionsDTO fullDto = listHandler.handle(query);
         // Convert to mobile optimized DTO
         MobileAuctionsDTO mobileDto = mobileService.convertToMobileAuctions(fullDto);

@@ -196,6 +196,16 @@ public class DutchAuctionAggregate extends AggregateRoot {
     public WinnerId getWinnerId() { return winnerId; }
     public List<PriceHistoryEntry> getPriceHistory() { return new ArrayList<>(priceHistory); }
 
+    @Override
+    public void handle(Object command) {
+        // TODO: implement command handling for Dutch auctions
+    }
+
+    @Override
+    public void apply(DomainEvent event) {
+        // TODO: implement event application
+    }
+
     public static class PriceHistoryEntry {
         private final Money price;
         private final Instant timestamp;

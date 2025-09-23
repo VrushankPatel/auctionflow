@@ -1,9 +1,9 @@
 package com.auctionflow.timers;
 
+import com.auctionflow.common.service.EventPublisher;
+import com.auctionflow.common.service.EventStore;
 import com.auctionflow.core.domain.commands.ReducePriceCommand;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
-import com.auctionflow.events.EventStore;
-import com.auctionflow.events.publisher.KafkaEventPublisher;
 import io.netty.util.Timeout;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -28,31 +29,15 @@ import java.util.concurrent.TimeUnit;
  * Service to manage auction close timers.
  * Schedules and reschedules timers for auction closures.
  */
-public class AuctionTimerService {
+public class AuctionTimerService implements com.auctionflow.common.service.AuctionTimerService {
 
-    public static class AuctionSchedule {
-        private final AuctionId auctionId;
-        private final Instant endTime;
 
-        public AuctionSchedule(AuctionId auctionId, Instant endTime) {
-            this.auctionId = auctionId;
-            this.endTime = endTime;
-        }
-
-        public AuctionId getAuctionId() {
-            return auctionId;
-        }
-
-        public Instant getEndTime() {
-            return endTime;
-        }
-    }
 
     private static final Logger logger = LoggerFactory.getLogger(AuctionTimerService.class);
 
     private final HierarchicalTimingWheel timingWheel;
     private final EventStore eventStore;
-    private final KafkaEventPublisher eventPublisher;
+    private final EventPublisher eventPublisher;
     private final RedissonClient redissonClient;
     private final DurableScheduler durableScheduler;
     private final TimerMetrics timerMetrics;
@@ -62,8 +47,8 @@ public class AuctionTimerService {
     private final Map<AuctionId, Timeout> activeTimers = new ConcurrentHashMap<>();
 
     public AuctionTimerService(HierarchicalTimingWheel timingWheel, EventStore eventStore,
-                               KafkaEventPublisher eventPublisher, RedissonClient redissonClient,
-                               DurableScheduler durableScheduler, TimerMetrics timerMetrics) {
+                                EventPublisher eventPublisher, RedissonClient redissonClient,
+                                DurableScheduler durableScheduler, TimerMetrics timerMetrics) {
         this.timingWheel = timingWheel;
         this.eventStore = eventStore;
         this.eventPublisher = eventPublisher;

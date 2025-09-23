@@ -1,7 +1,7 @@
 package com.auctionflow.api.dtos;
 
 import java.math.BigDecimal;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 
 public class MakeOfferRequest {
     @NotNull

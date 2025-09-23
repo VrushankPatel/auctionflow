@@ -43,7 +43,7 @@ public class HierarchicalTimingWheel {
      * @param delay the delay in milliseconds
      * @return Timeout handle for cancellation
      */
-    public Timeout schedule(TimerTask task, long delay) {
+    public Timeout schedule(com.auctionflow.timers.TimerTask task, long delay) {
         metrics.incrementScheduled();
         return wheelTimer.newTimeout(new NettyTimerTaskAdapter(task, metrics), delay, TimeUnit.MILLISECONDS);
     }
@@ -64,7 +64,7 @@ public class HierarchicalTimingWheel {
     /**
      * Adapter to bridge our TimerTask to Netty's TimerTask.
      */
-    private static class NettyTimerTaskAdapter implements TimerTask {
+    private class NettyTimerTaskAdapter implements TimerTask {
 
         private final com.auctionflow.timers.TimerTask task;
         private final TimerMetrics metrics;

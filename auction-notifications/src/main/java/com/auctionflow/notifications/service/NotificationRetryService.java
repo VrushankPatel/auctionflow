@@ -1,5 +1,6 @@
 package com.auctionflow.notifications.service;
 
+import com.auctionflow.notifications.NotificationService;
 import com.auctionflow.notifications.entity.NotificationDelivery;
 import com.auctionflow.notifications.repository.NotificationDeliveryRepository;
 import org.slf4j.Logger;

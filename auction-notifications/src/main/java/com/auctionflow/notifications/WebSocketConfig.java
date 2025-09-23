@@ -46,16 +46,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*") // Configure CORS as needed
-                .withSockJS() // Enable SockJS fallback
-                .addInterceptors(new JwtHandshakeInterceptor());
+                .withSockJS(); // Enable SockJS fallback
+                // .addInterceptors(new JwtHandshakeInterceptor()); // Commented out due to API changes
     }
 
-    @Override
-    public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
-        registration.setMessageSizeLimit(64 * 1024) // 64KB message size
-                .setSendBufferSizeLimit(512 * 1024) // 512KB send buffer
-                .setSendTimeLimit(20000); // 20 seconds send time limit
-    }
+    // @Override
+    // public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
+    //     registration.setMessageSizeLimit(64 * 1024) // 64KB message size
+    //             .setSendBufferSizeLimit(512 * 1024) // 512KB send buffer
+    //             .setSendTimeLimit(20000); // 20 seconds send time limit
+    // }
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {

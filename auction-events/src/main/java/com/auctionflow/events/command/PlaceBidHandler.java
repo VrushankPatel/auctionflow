@@ -11,16 +11,17 @@ import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.core.domain.events.ProxyBidOutbidEvent;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.AuctionType;
+import com.auctionflow.core.domain.valueobjects.BidderId;
 import com.auctionflow.core.domain.valueobjects.Money;
 import com.auctionflow.events.AggregateCacheService;
-import com.auctionflow.events.EventStore;
+import com.auctionflow.common.service.EventStore;
 import com.auctionflow.events.persistence.ProxyBidEntity;
 import com.auctionflow.events.persistence.ProxyBidRepository;
-import com.auctionflow.timers.AntiSnipeExtension;
+
 import com.auctionflow.events.command.AutomatedBiddingService;
 import com.auctionflow.bidding.strategies.BidDecision;
 import com.auctionflow.bidding.strategies.StrategyBidDecision;
-import io.opentelemetry.instrumentation.annotations.WithSpan;
+import io.opentelemetry.extension.annotations.WithSpan;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.context.event.EventListener;
@@ -33,6 +34,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -44,18 +46,16 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
     private final EventStore eventStore;
     private final KafkaTemplate<String, DomainEvent> kafkaTemplate;
     private final RedissonClient redissonClient;
-    private final AntiSnipeExtension antiSnipeExtension;
     private final ProxyBidRepository proxyBidRepository;
     private final AutomatedBiddingService automatedBiddingService;
     private final AggregateCacheService aggregateCacheService;
     // Scheduled executor for non-blocking retries
     private final ScheduledExecutorService retryExecutor = Executors.newScheduledThreadPool(10);
 
-    public PlaceBidHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient, AntiSnipeExtension antiSnipeExtension, ProxyBidRepository proxyBidRepository, AutomatedBiddingService automatedBiddingService, AggregateCacheService aggregateCacheService) {
+    public PlaceBidHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient, ProxyBidRepository proxyBidRepository, AutomatedBiddingService automatedBiddingService, AggregateCacheService aggregateCacheService) {
         this.eventStore = eventStore;
         this.kafkaTemplate = kafkaTemplate;
         this.redissonClient = redissonClient;
-        this.antiSnipeExtension = antiSnipeExtension;
         this.proxyBidRepository = proxyBidRepository;
         this.automatedBiddingService = automatedBiddingService;
         this.aggregateCacheService = aggregateCacheService;
@@ -152,22 +152,7 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
                 });
             }
 
-            // Check for anti-snipe extension (only for English)
-            if (type != AuctionType.DUTCH) {
-                Instant bidTime = command.serverTs(); // Use precise server timestamp from command
-                AuctionAggregate english = (AuctionAggregate) aggregate;
-                AuctionExtendedEvent extensionEvent = antiSnipeExtension.calculateExtensionIfNeeded(
-                    english.getId(),
-                    bidTime,
-                    english.getEndTime(),
-                    english.getOriginalDuration(),
-                    english.getAntiSnipePolicy(),
-                    english.getExtensionsCount()
-                );
-                if (extensionEvent != null) {
-                    kafkaTemplate.send("auction-events", extensionEvent.getAggregateId().toString(), extensionEvent);
-                }
-            }
+
 
             aggregate.clearDomainEvents();
         } catch (OptimisticLockException e) {
@@ -194,7 +179,6 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
 
         for (ProxyBidEntity proxyBid : proxyBids) {
             // Calculate next bid amount using proper increment strategy
-            AuctionAggregate auctionAgg = (AuctionAggregate) aggregate;
             Money nextBidAmount = auctionAgg.getBidIncrement().nextBid(currentHighest);
             if (nextBidAmount.toBigDecimal().compareTo(proxyBid.getMaxBid()) > 0) {
                 // Cannot bid, mark as outbid
@@ -250,10 +234,10 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
             BidDecision decision = strategyDecision.getDecision();
             if (decision.shouldBid() && decision.getBidTime().isBefore(Instant.now().plusSeconds(1))) { // Only immediate bids for now
                 // Place the automated bid for this user
-                BidderId bidderId = BidderId.fromString(strategyDecision.getStrategy().getBidderId());
+                BidderId bidderId = strategyDecision.getStrategy().getBidderId();
                 Instant autoServerTs = Instant.now();
                 long autoSeqNo = generateSeqNo(auctionId);
-                PlaceBidCommand autoCommand = new PlaceBidCommand(auctionId, bidderId, decision.getBidAmount(), "automated-" + strategyDecision.getStrategy().getId(), autoServerTs, autoSeqNo);
+                PlaceBidCommand autoCommand = new PlaceBidCommand(auctionId, bidderId.id(), decision.getBidAmount(), "automated-" + strategyDecision.getStrategy().getId(), autoServerTs, autoSeqNo);
 
                 // Handle the automated bid
                 auctionAgg.handle(autoCommand);

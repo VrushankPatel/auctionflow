@@ -1,6 +1,6 @@
 package com.auctionflow.api.entities;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -13,7 +13,7 @@ public class ProxyBid {
     private Long id;
 
     @Column(name = "auction_id", nullable = false)
-    private Long auctionId;
+    private String auctionId;
 
     @Column(name = "user_id", nullable = false)
     private java.util.UUID userId;
@@ -42,11 +42,11 @@ public class ProxyBid {
         this.id = id;
     }
 
-    public Long getAuctionId() {
+    public String getAuctionId() {
         return auctionId;
     }
 
-    public void setAuctionId(Long auctionId) {
+    public void setAuctionId(String auctionId) {
         this.auctionId = auctionId;
     }
 

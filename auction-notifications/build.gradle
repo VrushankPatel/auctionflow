@@ -1,5 +1,5 @@
 plugins {
-    id 'org.springframework.boot' version '3.2.0'
+    id 'java'
     id 'org.flywaydb.flyway' version '10.0.1'
 }
 
@@ -22,7 +22,7 @@ dependencies {
      implementation 'io.opentelemetry:opentelemetry-sdk'
      implementation 'io.opentelemetry:opentelemetry-exporter-jaeger'
      implementation 'io.opentelemetry:opentelemetry-extension-annotations'
-     implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'
+       // implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'
      implementation 'net.logstash.logback:logstash-logback-encoder:7.3'
      implementation project(':auction-common')
     implementation project(':auction-events')

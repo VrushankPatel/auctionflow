@@ -81,9 +81,8 @@ public class SecurityConfig {
             .headers(headers -> headers
                 .frameOptions().deny()
                 .contentTypeOptions().and()
-                .httpStrictTransportSecurity(hstsConfig -> hstsConfig
-                    .maxAgeInSeconds(31536000)
-                    .includeSubdomains(true))
+                 .httpStrictTransportSecurity(hstsConfig -> hstsConfig
+                    .maxAgeInSeconds(31536000))
                 .referrerPolicy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
             )
              .addFilterBefore(rateLimitFilter, ApiKeyAuthenticationFilter.class)

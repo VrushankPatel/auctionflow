@@ -20,29 +20,29 @@ import java.util.stream.Collectors;
 @Configuration
 public class GraphQLConfig {
 
-    @Bean
-    public BatchLoaderRegistry batchLoaderRegistry(ItemRepository itemRepository, UserRepository userRepository) {
-        BatchLoaderRegistry registry = new BatchLoaderRegistry();
-        DataLoaderRegistry registry = new DataLoaderRegistry();
+    // @Bean
+    // public DataLoaderRegistry batchLoaderRegistry(ItemRepository itemRepository, UserRepository userRepository) {
+        // BatchLoaderRegistry registry = new BatchLoaderRegistry();
+        // DataLoaderRegistry registry = new DataLoaderRegistry();
 
         // DataLoader for Items
-        BatchLoader<String, Item> itemBatchLoader = ids -> CompletableFuture.supplyAsync(() -> {
-            List<UUID> uuids = ids.stream().map(UUID::fromString).collect(Collectors.toList());
-            List<Item> items = itemRepository.findAllById(uuids);
-            return ids.stream().map(id -> items.stream().filter(item -> item.getId().toString().equals(id)).findFirst().orElse(null)).collect(Collectors.toList());
-        });
-        registry.register("itemDataLoader", DataLoader.newDataLoader(itemBatchLoader));
+        // BatchLoader<String, Item> itemBatchLoader = ids -> CompletableFuture.supplyAsync(() -> {
+        //     List<UUID> uuids = ids.stream().map(UUID::fromString).collect(Collectors.toList());
+        //     List<Item> items = itemRepository.findAllById(uuids);
+        //     return ids.stream().map(id -> items.stream().filter(item -> item.getId().toString().equals(id)).findFirst().orElse(null)).collect(Collectors.toList());
+        // });
+        // registry.register("itemDataLoader", DataLoader.newDataLoader(itemBatchLoader));
 
         // DataLoader for Users
-        BatchLoader<String, User> userBatchLoader = ids -> CompletableFuture.supplyAsync(() -> {
-            List<UUID> uuids = ids.stream().map(UUID::fromString).collect(Collectors.toList());
-            List<User> users = userRepository.findAllById(uuids);
-            return ids.stream().map(id -> users.stream().filter(user -> user.getId().toString().equals(id)).findFirst().orElse(null)).collect(Collectors.toList());
-        });
-        registry.register("userDataLoader", DataLoader.newDataLoader(userBatchLoader));
+        // BatchLoader<String, User> userBatchLoader = ids -> CompletableFuture.supplyAsync(() -> {
+        //     List<UUID> uuids = ids.stream().map(UUID::fromString).collect(Collectors.toList());
+        //     List<User> users = userRepository.findAllById(uuids);
+        //     return ids.stream().map(id -> users.stream().filter(user -> user.getId().toString().equals(id)).findFirst().orElse(null)).collect(Collectors.toList());
+        // });
+        // registry.register("userDataLoader", DataLoader.newDataLoader(userBatchLoader));
 
-        return registry;
-    }
+        // return registry;
+    // }
 
     @Bean
     public DataLoaderRegistry dataLoaderRegistry(ItemRepository itemRepository, UserRepository userRepository) {
@@ -50,17 +50,17 @@ public class GraphQLConfig {
 
         // DataLoader for Items
         BatchLoader<String, Item> itemBatchLoader = ids -> CompletableFuture.supplyAsync(() -> {
-            List<UUID> uuids = ids.stream().map(UUID::fromString).collect(Collectors.toList());
-            List<Item> items = itemRepository.findAllById(uuids);
-            return ids.stream().map(id -> items.stream().filter(item -> item.getId().toString().equals(id)).findFirst().orElse(null)).collect(Collectors.toList());
+            List<String> stringIds = ids;
+            List<Item> items = itemRepository.findAllById(stringIds);
+            return ids.stream().map(id -> items.stream().filter(item -> item.getId().equals(id)).findFirst().orElse(null)).collect(Collectors.toList());
         });
         registry.register("itemDataLoader", DataLoader.newDataLoader(itemBatchLoader));
 
         // DataLoader for Users
         BatchLoader<String, User> userBatchLoader = ids -> CompletableFuture.supplyAsync(() -> {
-            List<UUID> uuids = ids.stream().map(UUID::fromString).collect(Collectors.toList());
-            List<User> users = userRepository.findAllById(uuids);
-            return ids.stream().map(id -> users.stream().filter(user -> user.getId().toString().equals(id)).findFirst().orElse(null)).collect(Collectors.toList());
+            List<Long> longIds = ids.stream().map(Long::valueOf).collect(Collectors.toList());
+            List<User> users = userRepository.findAllById(longIds);
+            return ids.stream().map(id -> users.stream().filter(user -> user.getId().equals(Long.valueOf(id))).findFirst().orElse(null)).collect(Collectors.toList());
         });
         registry.register("userDataLoader", DataLoader.newDataLoader(userBatchLoader));
 

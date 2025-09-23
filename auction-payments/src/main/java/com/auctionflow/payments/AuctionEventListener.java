@@ -2,7 +2,7 @@ package com.auctionflow.payments;
 
 import com.auctionflow.core.domain.events.AuctionClosedEvent;
 import com.auctionflow.core.domain.events.DomainEvent;
-import io.opentelemetry.instrumentation.annotations.WithSpan;
+import io.opentelemetry.extension.annotations.WithSpan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -33,13 +33,13 @@ public class AuctionEventListener {
 
                 // For demo, assume winning bid is 100.00, seller is "seller1", buyer is winner
                 // In real, need to query auction details
-                String auctionId = closedEvent.getAggregateId().getValue();
+                String auctionId = ((com.auctionflow.core.domain.valueobjects.AuctionId) closedEvent.getAggregateId()).value().toString();
                 String sellerId = "seller1"; // hardcoded
-                String buyerId = closedEvent.getWinnerId() != null ? closedEvent.getWinnerId().getValue() : null;
+                String buyerId = closedEvent.getWinnerId() != null ? closedEvent.getWinnerId().value().toString() : null;
                 BigDecimal winningBid = BigDecimal.valueOf(100.00); // hardcoded
 
                 try {
-                    Invoice invoice = invoiceService.generateInvoice(auctionId, sellerId, buyerId, winningBid);
+                    Invoice invoice = invoiceService.generateInvoice(auctionId, sellerId, buyerId, winningBid, "US", "electronics");
                     logger.info("Generated invoice {} for auction {}", invoice.getId(), auctionId);
                 } catch (Exception e) {
                     logger.error("Failed to generate invoice for auction {}", auctionId, e);

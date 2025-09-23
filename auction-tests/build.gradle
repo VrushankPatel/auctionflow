@@ -11,15 +11,14 @@ dependencies {
     implementation project(':auction-common')
     implementation project(':auction-events')
     implementation project(':auction-timers')
-    implementation project(':auction-payments')
-    implementation project(':auction-notifications')
+     // implementation project(':auction-payments')
+     // implementation project(':auction-notifications')
     implementation project(':auction-analytics')
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.testcontainers:postgresql'
     testImplementation 'org.testcontainers:kafka'
     testImplementation 'org.testcontainers:junit-jupiter'
-    testImplementation 'org.testcontainers:redis'
     testImplementation 'org.testcontainers:toxiproxy'
     testImplementation 'org.awaitility:awaitility'
 

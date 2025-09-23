@@ -11,10 +11,10 @@ import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.AuctionStatus;
 import com.auctionflow.core.domain.valueobjects.AuctionType;
-import com.auctionflow.events.EventStore;
-import com.auctionflow.events.publisher.KafkaEventPublisher;
+import com.auctionflow.common.service.EventStore;
+import com.auctionflow.common.service.EventPublisher;
 import io.micrometer.core.instrument.Timer;
-import io.opentelemetry.instrumentation.annotations.WithSpan;
+// import io.opentelemetry.instrumentation.annotations.WithSpan;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -34,14 +34,14 @@ public class AuctionCloseTask implements TimerTask {
     private static final Logger logger = LoggerFactory.getLogger(AuctionCloseTask.class);
 
     private final AuctionId auctionId;
-    private final EventStore eventStore;
-    private final KafkaEventPublisher eventPublisher;
+    private final com.auctionflow.common.service.EventStore eventStore;
+    private final EventPublisher eventPublisher;
     private final RedissonClient redissonClient;
     private final UUID jobId;
     private final DurableScheduler durableScheduler;
     private final TimerMetrics timerMetrics;
 
-    public AuctionCloseTask(AuctionId auctionId, EventStore eventStore, KafkaEventPublisher eventPublisher, RedissonClient redissonClient, UUID jobId, DurableScheduler durableScheduler, TimerMetrics timerMetrics) {
+    public AuctionCloseTask(AuctionId auctionId, com.auctionflow.common.service.EventStore eventStore, EventPublisher eventPublisher, RedissonClient redissonClient, UUID jobId, DurableScheduler durableScheduler, TimerMetrics timerMetrics) {
         this.auctionId = auctionId;
         this.eventStore = eventStore;
         this.eventPublisher = eventPublisher;
@@ -52,7 +52,7 @@ public class AuctionCloseTask implements TimerTask {
     }
 
     @Override
-    @WithSpan("execute-auction-close-task")
+    // @WithSpan("execute-auction-close-task")
     public void execute() {
         Timer.Sample sample = timerMetrics.startAuctionCloseTimer();
         String lockKey = "auction-close:" + auctionId.value();

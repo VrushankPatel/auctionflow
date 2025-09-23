@@ -3,13 +3,14 @@ package com.auctionflow.notifications;
 import com.auctionflow.core.domain.events.*;
 import com.auctionflow.core.domain.events.ProxyBidOutbidEvent;
 import com.auctionflow.core.domain.events.ReserveMetEvent;
+import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.notifications.entity.BatchedNotification;
 import com.auctionflow.notifications.entity.NotificationDelivery;
 import com.auctionflow.notifications.repository.BatchedNotificationRepository;
 import com.auctionflow.notifications.repository.NotificationDeliveryRepository;
 import com.auctionflow.notifications.service.EmailService;
 import com.auctionflow.notifications.service.PushNotificationService;
-import io.opentelemetry.instrumentation.annotations.WithSpan;
+import io.opentelemetry.extension.annotations.WithSpan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -92,7 +93,7 @@ public class NotificationService {
     }
 
     private void handleBidPlaced(BidPlacedEvent event) {
-        String auctionId = event.getAuctionId().getValue().toString();
+        String auctionId = ((AuctionId) event.getAggregateId()).value().toString();
         String bidderId = event.getBidderId().toString();
 
         // Notify bidder that bid was accepted
@@ -114,18 +115,18 @@ public class NotificationService {
 
     private void handleBidRejected(BidRejectedEvent event) {
         String bidderId = event.getBidderId().toString();
-        String auctionId = event.getAuctionId().getValue().toString();
+        String auctionId = ((AuctionId) event.getAggregateId()).value().toString();
         sendNotification(bidderId, "BidRejected", "Your bid has been rejected for auction " + auctionId);
     }
 
     private void handleProxyBidOutbid(ProxyBidOutbidEvent event) {
         String userId = event.getUserId().toString();
-        String auctionId = event.getAuctionId().getValue().toString();
+        String auctionId = ((AuctionId) event.getAggregateId()).value().toString();
         sendNotification(userId, "ProxyBidOutbid", "Your proxy bid has been outbid on auction " + auctionId + ". " + event.getReason());
     }
 
     private void handleReserveMet(ReserveMetEvent event) {
-        String auctionId = event.getAuctionId().getValue().toString();
+        String auctionId = ((AuctionId) event.getAggregateId()).value().toString();
         String bidderId = event.getBidderId().toString();
         // Notify seller that reserve has been met
         // Assuming sellerId is stored in Redis or fetched
@@ -138,22 +139,34 @@ public class NotificationService {
     }
 
     private void handleAuctionExtended(AuctionExtendedEvent event) {
-        String auctionId = event.getAuctionId().getValue().toString();
+        String auctionId = ((AuctionId) event.getAggregateId()).value().toString();
         notifyWatchers(auctionId, "AuctionExtended", "Auction " + auctionId + " has been extended");
     }
 
     private void handleAuctionClosed(AuctionClosedEvent event) {
-        String auctionId = event.getAuctionId().getValue().toString();
+        String auctionId = ((AuctionId) event.getAggregateId()).value().toString();
         notifyWatchers(auctionId, "AuctionClosed", "Auction " + auctionId + " has closed");
     }
 
     private void handleWinnerDeclared(WinnerDeclaredEvent event) {
-        String auctionId = event.getAuctionId().getValue().toString();
+        String auctionId = ((AuctionId) event.getAggregateId()).value().toString();
         if (event.getWinnerId() != null) {
-            String winnerId = event.getWinnerId().getValue().toString();
+            String winnerId = event.getWinnerId().value().toString();
             sendNotification(winnerId, "AuctionWon", "Congratulations! You won auction " + auctionId);
         }
         notifyWatchers(auctionId, "AuctionWon", "Auction " + auctionId + " has a winner");
+    }
+
+    private boolean sendPushNotification(String userId, String notificationType, String title, String message) {
+        return pushNotificationService.sendPushNotification(userId, notificationType, title, message);
+    }
+
+    private boolean sendEmailNotification(String userId, String notificationType, String message) {
+        String email = redisTemplate.opsForValue().get("email:" + userId);
+        if (email != null) {
+            return emailService.sendEmail(userId, email, "Auction Notification: " + notificationType, message, notificationType);
+        }
+        return false;
     }
 
     private void sendNotification(String userId, String type, String message) {
@@ -227,7 +240,7 @@ public class NotificationService {
                 success = sendWebSocketNotification(delivery.getUserId(), delivery.getNotificationType(), delivery.getMessage());
                 break;
             case "push":
-                success = sendPushNotification(delivery.getUserId(), delivery.getNotificationType(), delivery.getMessage());
+                success = sendPushNotification(delivery.getUserId(), delivery.getNotificationType(), delivery.getNotificationType(), delivery.getMessage());
                 break;
             case "email":
                 success = sendEmailNotification(delivery.getUserId(), delivery.getNotificationType(), delivery.getMessage());

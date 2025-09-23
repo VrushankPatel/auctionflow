@@ -1,6 +1,7 @@
 package com.auctionflow.api;
 
-import com.auctionflow.analytics.AuditService;
+// import com.auctionflow.analytics.AuditService;
+import com.auctionflow.api.dtos.CreateUserRequest;
 import com.auctionflow.api.entities.DocumentUpload;
 import com.auctionflow.api.entities.User;
 import com.auctionflow.api.services.IdentityVerificationService;
@@ -22,11 +23,21 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    @Autowired
-    private AuditService auditService;
+    // @Autowired
+    // private AuditService auditService;
 
     @Autowired
     private IdentityVerificationService identityVerificationService;
+
+    @PostMapping
+    public ResponseEntity<?> createUser(@RequestBody CreateUserRequest request) {
+        try {
+            User user = userService.createUser(request.getEmail(), request.getDisplayName(), request.getPassword(), request.getRole());
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed: " + e.getMessage());
+        }
+    }
 
     @PostMapping("/{id}/kyc/verify")
     @PreAuthorize("hasRole('ADMIN')")
@@ -130,7 +141,7 @@ public class UserController {
     public ResponseEntity<?> getConsents(@PathVariable Long id, HttpServletRequest request) {
         try {
             UserService.UserConsents consents = userService.getConsents(id);
-            auditService.logDataAccess(id, "VIEW_CONSENTS", "User", id, request.getRemoteAddr(), request.getRequestURI());
+            // auditService.logDataAccess(id, "VIEW_CONSENTS", "User", id, request.getRemoteAddr(), request.getRequestURI());
             return ResponseEntity.ok(consents);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Failed: " + e.getMessage());
@@ -142,6 +153,18 @@ public class UserController {
         try {
             userService.updateConsents(id, request.isConsentGiven(), request.isDataProcessingConsent());
             return ResponseEntity.ok("Consents updated");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}/bids")
+    public ResponseEntity<?> getUserBids(@PathVariable Long id) {
+        try {
+            // Assume userService has a method to get user bids
+            // List<Bid> bids = userService.getUserBids(id);
+            // return ResponseEntity.ok(bids);
+            return ResponseEntity.ok("Not implemented yet");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Failed: " + e.getMessage());
         }
@@ -163,7 +186,7 @@ public class UserController {
     public ResponseEntity<?> exportUserData(@PathVariable Long id, HttpServletRequest request) {
         try {
             String data = userService.exportUserData(id);
-            auditService.logDataAccess(id, "EXPORT_DATA", "User", id, request.getRemoteAddr(), request.getRequestURI());
+            // auditService.logDataAccess(id, "EXPORT_DATA", "User", id, request.getRemoteAddr(), request.getRequestURI());
             return ResponseEntity.ok()
                     .header("Content-Type", "application/json")
                     .header("Content-Disposition", "attachment; filename=user_" + id + "_data.json")

@@ -6,7 +6,7 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.ratelimiter.RateLimiter;
 import io.github.resilience4j.ratelimiter.RateLimiterConfig;
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
-import io.github.resilience4j.ratelimiter.redis.RedisRateLimiterRegistry;
+// import io.github.resilience4j.ratelimiter.redis.RedisRateLimiterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -18,7 +18,7 @@ public class Resilience4jConfig {
 
     @Bean
     public RateLimiterRegistry rateLimiterRegistry(RedisConnectionFactory redisConnectionFactory) {
-        RateLimiterRegistry registry = RedisRateLimiterRegistry.of(redisConnectionFactory).build();
+        RateLimiterRegistry registry = RateLimiterRegistry.ofDefaults();
 
         // Register rate limiters
         registry.rateLimiter("perUser", perUserRateLimiterConfig());

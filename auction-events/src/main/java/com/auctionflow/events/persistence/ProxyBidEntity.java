@@ -1,6 +1,6 @@
 package com.auctionflow.events.persistence;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 

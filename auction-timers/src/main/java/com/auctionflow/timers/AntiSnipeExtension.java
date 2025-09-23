@@ -1,5 +1,6 @@
 package com.auctionflow.timers;
 
+import com.auctionflow.common.service.AuctionTimerService;
 import com.auctionflow.core.domain.events.AuctionExtendedEvent;
 import com.auctionflow.core.domain.events.DomainEvent;
 import com.auctionflow.core.domain.valueobjects.AntiSnipePolicy;
@@ -20,14 +21,14 @@ import java.util.UUID;
  * Checks if a bid is within the extension window, calculates new end time,
  * reschedules the timer, and emits AuctionExtendedEvent.
  */
-public class AntiSnipeExtension {
+public class AntiSnipeExtension implements com.auctionflow.common.service.AntiSnipeExtension {
 
     private static final Logger logger = LoggerFactory.getLogger(AntiSnipeExtension.class);
 
     private final HierarchicalTimingWheel timingWheel;
     private final AuctionTimerService timerService; // Assume this exists or will be created
 
-    public AntiSnipeExtension(HierarchicalTimingWheel timingWheel, AuctionTimerService timerService) {
+    public AntiSnipeExtension(HierarchicalTimingWheel timingWheel, com.auctionflow.common.service.AuctionTimerService timerService) {
         this.timingWheel = timingWheel;
         this.timerService = timerService;
     }

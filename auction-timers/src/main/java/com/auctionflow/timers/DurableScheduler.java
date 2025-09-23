@@ -18,11 +18,11 @@ public class DurableScheduler {
     private static final Logger logger = LoggerFactory.getLogger(DurableScheduler.class);
 
     private final ScheduledJobRepository jobRepository;
-    private final AuctionTimerService timerService;
+    private final com.auctionflow.common.service.AuctionTimerService timerService;
     private final String nodeId;
     private final long leaseDurationSeconds = 300; // 5 minutes
 
-    public DurableScheduler(ScheduledJobRepository jobRepository, AuctionTimerService timerService) {
+    public DurableScheduler(ScheduledJobRepository jobRepository, com.auctionflow.common.service.AuctionTimerService timerService) {
         this.jobRepository = jobRepository;
         this.timerService = timerService;
         this.nodeId = UUID.randomUUID().toString();
@@ -39,7 +39,7 @@ public class DurableScheduler {
     @Transactional
     public UUID scheduleAuctionClose(AuctionId auctionId, Instant executeAt) {
         // Check if job already exists
-        List<ScheduledJob> existing = jobRepository.findByAuctionIdAndStatus(auctionId.getValue(), "pending");
+        List<ScheduledJob> existing = jobRepository.findByAuctionIdAndStatus(auctionId.value(), "pending");
         UUID jobId;
         if (!existing.isEmpty()) {
             // Update existing
@@ -54,7 +54,7 @@ public class DurableScheduler {
         } else {
             // Create new
             jobId = UUID.randomUUID();
-            ScheduledJob job = new ScheduledJob(jobId, auctionId.getValue(), executeAt);
+            ScheduledJob job = new ScheduledJob(jobId, auctionId.value(), executeAt);
             jobRepository.save(job);
         }
         logger.info("Scheduled durable job {} for auction {} at {}", jobId, auctionId, executeAt);
@@ -65,11 +65,11 @@ public class DurableScheduler {
      * Schedules durable jobs for multiple auction closes in batch.
      */
     @Transactional
-    public List<UUID> scheduleAuctionCloses(List<com.auctionflow.timers.AuctionTimerService.AuctionSchedule> schedules) {
+    public List<UUID> scheduleAuctionCloses(List<com.auctionflow.common.service.AuctionTimerService.AuctionSchedule> schedules) {
         List<UUID> jobIds = new ArrayList<>();
-        for (com.auctionflow.timers.AuctionTimerService.AuctionSchedule schedule : schedules) {
+        for (com.auctionflow.common.service.AuctionTimerService.AuctionSchedule schedule : schedules) {
             // Check if job already exists
-            List<ScheduledJob> existing = jobRepository.findByAuctionIdAndStatus(schedule.getAuctionId().getValue(), "pending");
+            List<ScheduledJob> existing = jobRepository.findByAuctionIdAndStatus(schedule.getAuctionId().value(), "pending");
             UUID jobId;
             if (!existing.isEmpty()) {
                 // Update existing
@@ -84,7 +84,7 @@ public class DurableScheduler {
             } else {
                 // Create new
                 jobId = UUID.randomUUID();
-                ScheduledJob job = new ScheduledJob(jobId, schedule.getAuctionId().getValue(), schedule.getEndTime());
+                ScheduledJob job = new ScheduledJob(jobId, schedule.getAuctionId().value(), schedule.getEndTime());
                 jobRepository.save(job);
             }
             jobIds.add(jobId);
@@ -98,7 +98,7 @@ public class DurableScheduler {
      */
     @Transactional
     public void cancelAuctionClose(AuctionId auctionId) {
-        List<ScheduledJob> jobs = jobRepository.findByAuctionIdAndStatus(auctionId.getValue(), "pending");
+        List<ScheduledJob> jobs = jobRepository.findByAuctionIdAndStatus(auctionId.value(), "pending");
         for (ScheduledJob job : jobs) {
             job.setStatus("cancelled");
             jobRepository.save(job);
