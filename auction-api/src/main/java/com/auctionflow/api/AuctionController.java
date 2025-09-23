@@ -230,6 +230,7 @@ public class AuctionController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = AuctionDetailsDTO.class))),
         @ApiResponse(responseCode = "404", description = "Auction not found", content = @Content)
     })
+    @org.springframework.cache.annotation.Cacheable(value = "auctionDetails", key = "#id")
     public ResponseEntity<AuctionDetailsDTO> getAuction(@PathVariable String id) {
         GetAuctionDetailsQuery query = new GetAuctionDetailsQuery(id);
         Optional<AuctionDetailsDTO> dto = detailsHandler.handle(query);
@@ -264,6 +265,7 @@ public class AuctionController {
         @ApiResponse(responseCode = "429", description = "Rate limit exceeded", content = @Content)
     })
     @SecurityRequirement(name = "bearerAuth")
+    @org.springframework.cache.annotation.CacheEvict(value = "auctionDetails", key = "#id")
     public ResponseEntity<BidResponse> placeBid(
         @PathVariable String id,
         @io.swagger.v3.oas.annotations.parameters.RequestBody(

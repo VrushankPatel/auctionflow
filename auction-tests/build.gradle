@@ -11,9 +11,11 @@ dependencies {
     implementation project(':auction-common')
     implementation project(':auction-events')
     implementation project(':auction-timers')
-     // implementation project(':auction-payments')
-     // implementation project(':auction-notifications')
+      // implementation project(':auction-payments')
+      // implementation project(':auction-notifications')
     implementation project(':auction-analytics')
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.testcontainers:postgresql'

@@ -19,6 +19,8 @@ public class Auction {
     private String encryptedReservePrice;
     private BigDecimal buyNowPrice;
     private boolean hiddenReserve;
+    private BigDecimal currentHighestBid;
+    private String currentHighestBidder;
     private Instant deletedAt;
     private Long deletedBy;
 
@@ -49,6 +51,12 @@ public class Auction {
 
     public boolean isHiddenReserve() { return hiddenReserve; }
     public void setHiddenReserve(boolean hiddenReserve) { this.hiddenReserve = hiddenReserve; }
+
+    public BigDecimal getCurrentHighestBid() { return currentHighestBid; }
+    public void setCurrentHighestBid(BigDecimal currentHighestBid) { this.currentHighestBid = currentHighestBid; }
+
+    public String getCurrentHighestBidder() { return currentHighestBidder; }
+    public void setCurrentHighestBidder(String currentHighestBidder) { this.currentHighestBidder = currentHighestBidder; }
 
     public Instant getDeletedAt() { return deletedAt; }
     public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }
