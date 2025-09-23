@@ -118,6 +118,7 @@ API documentation is available at [https://api.auctionflow.com/docs](https://api
 - `POST /api/v1/auctions/{id}/bids` - Place a bid
 - `POST /api/v1/auctions/{id}/buy-now` - Buy auction immediately
 - `POST /api/v1/auctions/{id}/offers` - Make an offer
+- `GET /api/v1/auctions/{id}/offers` - List offers for auction
 - `POST /api/v1/auctions/{id}/commits` - Commit bid for sealed auctions
 - `POST /api/v1/auctions/{id}/reveals` - Reveal bid for sealed auctions
 - `POST /api/v1/auctions/{id}/watch` - Add auction to watchlist
