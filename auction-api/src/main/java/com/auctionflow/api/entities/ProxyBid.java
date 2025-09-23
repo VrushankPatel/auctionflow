@@ -27,6 +27,12 @@ public class ProxyBid {
     @Column(name = "status", nullable = false)
     private String status = "ACTIVE";
 
+    @Column(name = "strategy_type")
+    private String strategyType;
+
+    @Column(name = "strategy_params", columnDefinition = "TEXT")
+    private String strategyParams;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
@@ -80,6 +86,22 @@ public class ProxyBid {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getStrategyType() {
+        return strategyType;
+    }
+
+    public void setStrategyType(String strategyType) {
+        this.strategyType = strategyType;
+    }
+
+    public String getStrategyParams() {
+        return strategyParams;
+    }
+
+    public void setStrategyParams(String strategyParams) {
+        this.strategyParams = strategyParams;
     }
 
     public Instant getCreatedAt() {

@@ -333,22 +333,20 @@ public class AuctionController {
 
         Instant serverTs = Instant.now();
         long seqNo = sequenceService.nextSequence(auctionId);
+
+        // For asynchronous processing, return immediately with optimistic acceptance
+        // The actual validation and processing happens asynchronously
+        BidResponse bidResponse = new BidResponse();
+        bidResponse.setAccepted(true); // Optimistically accept
+        bidResponse.setServerTimestamp(serverTs);
+        bidResponse.setSequenceNumber(seqNo);
+
+        // Send command asynchronously
         PlaceBidCommand cmd = new PlaceBidCommand(auctionId, bidderId, amount, idempotencyKey, serverTs, seqNo);
-        try {
-            commandBus.send(cmd);
-            BidResponse bidResponse = new BidResponse();
-            bidResponse.setAccepted(true);
-            bidResponse.setServerTimestamp(serverTs);
-            bidResponse.setSequenceNumber(seqNo);
-            return ResponseEntity.ok(bidResponse);
-        } catch (Exception e) {
-            // If synchronous validation fails, return rejected
-            BidResponse rejectedResponse = new BidResponse();
-            rejectedResponse.setAccepted(false);
-            rejectedResponse.setServerTimestamp(serverTs);
-            rejectedResponse.setSequenceNumber(seqNo);
-            return ResponseEntity.ok(rejectedResponse);
-        }
+        // Use async executor for command processing
+        commandBus.sendAsync(cmd);
+
+        return ResponseEntity.ok(bidResponse);
     }
 
     @PostMapping("/{id}/proxy-bid")

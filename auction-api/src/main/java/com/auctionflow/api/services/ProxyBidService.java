@@ -2,8 +2,13 @@ package com.auctionflow.api.services;
 
 import com.auctionflow.api.entities.ProxyBid;
 import com.auctionflow.api.repositories.ProxyBidRepository;
+import com.auctionflow.bidding.strategies.*;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
+import com.auctionflow.core.domain.valueobjects.BidderId;
 import com.auctionflow.core.domain.valueobjects.Money;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,14 +21,18 @@ import java.util.UUID;
 @Service
 public class ProxyBidService {
 
-    private final ProxyBidRepository proxyBidRepository;
+    private static final Logger logger = LoggerFactory.getLogger(ProxyBidService.class);
 
-    public ProxyBidService(ProxyBidRepository proxyBidRepository) {
+    private final ProxyBidRepository proxyBidRepository;
+    private final ObjectMapper objectMapper;
+
+    public ProxyBidService(ProxyBidRepository proxyBidRepository, ObjectMapper objectMapper) {
         this.proxyBidRepository = proxyBidRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
-    public ProxyBid setProxyBid(UUID userId, AuctionId auctionId, Money maxBid) {
+    public ProxyBid setProxyBid(UUID userId, AuctionId auctionId, Money maxBid, StrategyType strategyType, StrategyParameters params) {
         String auctionIdStr = auctionId.value().toString();
 
         // Check if user already has a proxy bid for this auction
@@ -31,6 +40,12 @@ public class ProxyBidService {
         if (existing.isPresent()) {
             ProxyBid proxyBid = existing.get();
             proxyBid.setMaxBid(maxBid.toBigDecimal());
+            proxyBid.setStrategyType(strategyType != null ? strategyType.name() : null);
+            try {
+                proxyBid.setStrategyParams(params != null ? objectMapper.writeValueAsString(params) : null);
+            } catch (Exception e) {
+                logger.error("Failed to serialize strategy params", e);
+            }
             proxyBid.setStatus("ACTIVE");
             return proxyBidRepository.save(proxyBid);
         } else {
@@ -39,6 +54,12 @@ public class ProxyBidService {
             proxyBid.setUserId(userId);
             proxyBid.setMaxBid(maxBid.toBigDecimal());
             proxyBid.setCurrentBid(BigDecimal.ZERO);
+            proxyBid.setStrategyType(strategyType != null ? strategyType.name() : null);
+            try {
+                proxyBid.setStrategyParams(params != null ? objectMapper.writeValueAsString(params) : null);
+            } catch (Exception e) {
+                logger.error("Failed to serialize strategy params", e);
+            }
             proxyBid.setStatus("ACTIVE");
             return proxyBidRepository.save(proxyBid);
         }
