@@ -32,7 +32,7 @@ public class RecommendationService {
         List<Bid> bidsForAuction = bidRepository.findByAuctionId(auctionId);
 
         // Get users who bid on this auction
-        Set<Long> users = bidsForAuction.stream().map(Bid::getBidderId).collect(Collectors.toSet());
+        List<Long> users = bidsForAuction.stream().map(Bid::getBidderId).collect(Collectors.toList());
 
         // Find other auctions these users bid on
         List<Bid> relatedBids = bidRepository.findByBidderIdIn(users);

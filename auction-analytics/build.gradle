@@ -10,17 +10,16 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis:3.2.0'
     implementation 'org.springframework.boot:spring-boot-starter-batch:3.2.0'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa:3.2.0'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux:3.2.0'
     implementation 'org.flywaydb:flyway-core:10.0.1'
      implementation 'io.micrometer:micrometer-registry-prometheus:1.12.0'
      implementation platform('io.opentelemetry:opentelemetry-bom:1.32.0')
      implementation 'io.opentelemetry:opentelemetry-api'
      implementation 'io.opentelemetry:opentelemetry-sdk'
      implementation 'io.opentelemetry:opentelemetry-exporter-jaeger'
-     implementation 'io.opentelemetry:opentelemetry-extension-annotations'
-     implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'
+      implementation 'io.opentelemetry:opentelemetry-extension-annotations'
      implementation 'net.logstash.logback:logstash-logback-encoder:7.3'
-     implementation 'ml.dmlc:xgboost4j_2.12:1.7.6'
-     implementation 'ml.dmlc:xgboost4j-spark_2.12:1.7.6'
+
      implementation project(':auction-core')
     implementation project(':auction-common')
 }

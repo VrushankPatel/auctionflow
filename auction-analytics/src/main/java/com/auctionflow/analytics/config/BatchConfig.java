@@ -1,5 +1,6 @@
 package com.auctionflow.analytics.config;
 
+import com.auctionflow.analytics.dtos.FraudAlertDTO;
 import com.auctionflow.analytics.entities.Seller;
 import com.auctionflow.analytics.entities.User;
 import org.springframework.batch.core.Job;

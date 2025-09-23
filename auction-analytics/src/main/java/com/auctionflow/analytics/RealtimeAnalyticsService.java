@@ -1,7 +1,8 @@
 package com.auctionflow.analytics;
 
 import com.auctionflow.core.domain.events.*;
-import io.opentelemetry.instrumentation.annotations.WithSpan;
+import io.opentelemetry.extension.annotations.WithSpan;
+import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -39,7 +40,7 @@ public class RealtimeAnalyticsService {
             String auctionId = auctionEvent.getAggregateId().toString();
             String categoryId = auctionEvent.getCategoryId();
             redisTemplate.opsForHash().put(AUCTION_CATEGORY, auctionId, categoryId);
-            redisTemplate.expire(AUCTION_CATEGORY, EXPIRATION_SECONDS);
+            redisTemplate.expire(AUCTION_CATEGORY, Duration.ofSeconds(EXPIRATION_SECONDS));
             logger.info("Stored category for auction {}", auctionId);
         }
     }
@@ -50,21 +51,21 @@ public class RealtimeAnalyticsService {
         if (event instanceof BidPlacedEvent) {
             BidPlacedEvent bidEvent = (BidPlacedEvent) event;
             String auctionId = bidEvent.getAggregateId().toString();
-            double amount = bidEvent.getAmount().amount().doubleValue();
+            double amount = bidEvent.getAmount().toBigDecimal().doubleValue();
 
             // Update top auctions by bid count
             zSetOps.incrementScore(TOP_AUCTIONS_BIDS, auctionId, 1);
-            redisTemplate.expire(TOP_AUCTIONS_BIDS, EXPIRATION_SECONDS);
+            redisTemplate.expire(TOP_AUCTIONS_BIDS, Duration.ofSeconds(EXPIRATION_SECONDS));
 
             // Update auction prices (current highest)
             zSetOps.add(AUCTION_PRICES, auctionId, amount);
-            redisTemplate.expire(AUCTION_PRICES, EXPIRATION_SECONDS);
+            redisTemplate.expire(AUCTION_PRICES, Duration.ofSeconds(EXPIRATION_SECONDS));
 
             // Update trending categories
             String categoryId = (String) redisTemplate.opsForHash().get(AUCTION_CATEGORY, auctionId);
             if (categoryId != null) {
                 zSetOps.incrementScore(TRENDING_CATEGORIES, categoryId, 1);
-                redisTemplate.expire(TRENDING_CATEGORIES, EXPIRATION_SECONDS);
+                redisTemplate.expire(TRENDING_CATEGORIES, Duration.ofSeconds(EXPIRATION_SECONDS));
             }
 
             logger.info("Updated analytics for bid on auction {}", auctionId);

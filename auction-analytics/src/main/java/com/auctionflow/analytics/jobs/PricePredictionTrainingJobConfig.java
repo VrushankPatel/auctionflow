@@ -6,6 +6,7 @@ import com.auctionflow.analytics.entities.Item;
 import com.auctionflow.analytics.entities.Seller;
 import com.auctionflow.analytics.repositories.AuctionRepository;
 import com.auctionflow.analytics.repositories.BidRepository;
+import java.time.LocalDateTime;
 import com.auctionflow.analytics.repositories.ItemRepository;
 import com.auctionflow.analytics.repositories.SellerRepository;
 import org.springframework.batch.item.ItemProcessor;
@@ -47,7 +48,7 @@ public class PricePredictionTrainingJobConfig {
     public ItemProcessor<String, List<TrainingData>> pricePredictionTrainingProcessor() {
         return item -> {
             // Fetch all closed auctions
-            List<Auction> closedAuctions = auctionRepository.findByStatus("CLOSED");
+            List<Auction> closedAuctions = auctionRepository.findByStatusAndEndTsBetween("CLOSED", LocalDateTime.of(2000, 1, 1, 0, 0), LocalDateTime.now());
 
             return closedAuctions.stream()
                     .map(this::extractTrainingData)

@@ -1,6 +1,6 @@
 package com.auctionflow.analytics.entities;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity

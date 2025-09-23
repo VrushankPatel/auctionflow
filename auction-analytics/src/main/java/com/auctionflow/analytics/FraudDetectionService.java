@@ -124,7 +124,7 @@ public class FraudDetectionService {
         long timeSinceLastBid = bids.isEmpty() ? 0 : ChronoUnit.SECONDS.between(bids.get(bids.size() - 1).getServerTs(), now);
 
         Long lastAuctionId = bids.get(bids.size() - 1).getAuctionId();
-        double lastBidAmount = bids.get(bids.size() - 1).getAmount().doubleValue();
+        double lastBidAmount = bids.get(bids.size() - 1).getAmount().toBigDecimal().doubleValue();
 
         FraudScoreRequest mlRequest = new FraudScoreRequest(
                 user.getId().toString(),

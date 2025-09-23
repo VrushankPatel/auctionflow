@@ -70,6 +70,7 @@ public class AuctionController {
     private final ItemValidationService itemValidationService;
     private final ItemRepository itemRepository;
     private final FeatureFlagService featureFlagService;
+    private final RateLimiterRegistry rateLimiterRegistry;
 
     public AuctionController(SequenceService sequenceService,
                               CommandBus commandBus,
@@ -80,8 +81,9 @@ public class AuctionController {
                               ProxyBidService proxyBidService,
                               UserService userService,
                               ItemValidationService itemValidationService,
-                              ItemRepository itemRepository,
-                              FeatureFlagService featureFlagService) {
+                               ItemRepository itemRepository,
+                               FeatureFlagService featureFlagService,
+                               RateLimiterRegistry rateLimiterRegistry) {
         this.sequenceService = sequenceService;
         this.commandBus = commandBus;
         this.listHandler = listHandler;
@@ -93,6 +95,7 @@ public class AuctionController {
         this.itemValidationService = itemValidationService;
         this.itemRepository = itemRepository;
         this.featureFlagService = featureFlagService;
+        this.rateLimiterRegistry = rateLimiterRegistry;
     }
 
     @PostMapping
@@ -680,33 +683,7 @@ public class AuctionController {
         return request.getRemoteAddr();
     }
 
-    @PostMapping("/{id}/offers")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(
-        summary = "Make an offer on auction",
-        description = "Allows a buyer to make an offer on an auction that has closed without meeting reserve."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Offer created successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content),
-        @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
-        @ApiResponse(responseCode = "404", description = "Auction not found", content = @Content)
-    })
-    @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<Void> makeOffer(
-        @PathVariable String id,
-        @Valid @RequestBody MakeOfferRequest request) {
-        // Assume userId from security context
-        String userId = "user-from-context"; // TODO: get from auth
-        AuctionId auctionId = new AuctionId(id);
-        BidderId buyerId = new BidderId(UUID.fromString(userId));
-        // TODO: get sellerId from auction
-        SellerId sellerId = new SellerId(UUID.randomUUID()); // placeholder
-        Money amount = Money.usd(request.getAmount());
-        MakeOfferCommand cmd = new MakeOfferCommand(auctionId, buyerId, sellerId, amount);
-        commandBus.send(cmd);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
-    }
+
 
     @GetMapping("/{id}/offers")
     @PreAuthorize("isAuthenticated()")

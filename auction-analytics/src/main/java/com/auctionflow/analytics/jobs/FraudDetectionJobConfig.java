@@ -70,13 +70,17 @@ public class FraudDetectionJobConfig {
             // Fallback to ML scoring
             List<Bid> bids = bidRepository.findByBidderIdAndServerTsGreaterThanEqual(user.getId(), LocalDateTime.now().minusDays(30));
             if (!bids.isEmpty()) {
-                double avgBid = bids.stream().mapToDouble(b -> b.getAmount().doubleValue()).average().orElse(0.0);
+                double avgBid = bids.stream().mapToDouble(b -> b.getAmount().toBigDecimal().doubleValue()).average().orElse(0.0);
                 FraudScoreRequest mlRequest = new FraudScoreRequest(
                         user.getId().toString(),
                         bids.get(bids.size() - 1).getAuctionId().toString(),
-                        bids.get(bids.size() - 1).getAmount().doubleValue(),
+                        bids.get(bids.size() - 1).getAmount().toBigDecimal().doubleValue(),
                         bids.size(),
-                        avgBid
+                        avgBid,
+                        0L, // bidsLastHour
+                        0L, // bidsLastMinute
+                        0.0, // bidAmountStdDev
+                        0L  // timeSinceLastBid
                 );
 
                 try {

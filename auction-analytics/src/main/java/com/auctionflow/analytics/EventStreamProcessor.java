@@ -1,7 +1,7 @@
 package com.auctionflow.analytics;
 
 import com.auctionflow.core.domain.events.*;
-import io.opentelemetry.instrumentation.annotations.WithSpan;
+import io.opentelemetry.extension.annotations.WithSpan;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -64,11 +64,11 @@ public class EventStreamProcessor {
                 BidPlacedEvent bidEvent = (BidPlacedEvent) event;
                 totalBids.increment();
                 acceptedBids.increment();
-                auctionBidCounts.computeIfAbsent(bidEvent.getAuctionId(), k -> new AtomicInteger(0)).incrementAndGet();
-                logger.info("Processed BidPlacedEvent for auction {}", bidEvent.getAuctionId());
+                auctionBidCounts.computeIfAbsent(bidEvent.getAggregateId().toString(), k -> new AtomicInteger(0)).incrementAndGet();
+                logger.info("Processed BidPlacedEvent for auction {}", bidEvent.getAggregateId());
             } else if (event instanceof BidRejectedEvent) {
                 totalBids.increment();
-                logger.info("Processed BidRejectedEvent for auction {}", ((BidRejectedEvent) event).getAuctionId());
+                logger.info("Processed BidRejectedEvent for auction {}", ((BidRejectedEvent) event).getAggregateId());
             }
         }
         acknowledgment.acknowledge(); // Batch commit
@@ -80,10 +80,10 @@ public class EventStreamProcessor {
         for (DomainEvent event : events) {
             if (event instanceof AuctionCreatedEvent) {
                 activeAuctions.incrementAndGet();
-                logger.info("Auction created: {}", ((AuctionCreatedEvent) event).getAuctionId());
+                logger.info("Auction created: {}", ((AuctionCreatedEvent) event).getAggregateId());
             } else if (event instanceof AuctionClosedEvent) {
                 activeAuctions.decrementAndGet();
-                logger.info("Auction closed: {}", ((AuctionClosedEvent) event).getAuctionId());
+                logger.info("Auction closed: {}", ((AuctionClosedEvent) event).getAggregateId());
             } else if (event instanceof AuctionExtendedEvent) {
                 // Extension, still active
             }
@@ -96,7 +96,7 @@ public class EventStreamProcessor {
     public void processNotificationEventsBatch(List<DomainEvent> events, Acknowledgment acknowledgment) {
         for (DomainEvent event : events) {
             if (event instanceof WinnerDeclaredEvent) {
-                logger.info("Winner declared for auction {}", ((WinnerDeclaredEvent) event).getAuctionId());
+                logger.info("Winner declared for auction {}", ((WinnerDeclaredEvent) event).getAggregateId());
             }
         }
         acknowledgment.acknowledge(); // Batch commit
