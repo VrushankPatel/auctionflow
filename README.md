@@ -34,6 +34,7 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 
 ## Bid Processing Optimizations
 
+- **Asynchronous Bid Processing**: Bid placement returns immediately with optimistic acceptance, processing validation and persistence asynchronously to reduce response latency.
 - **Server-Assigned Timestamps and Sequence Numbers**: API layer assigns server timestamp and monotonic sequence number to each bid for deterministic ordering and client reconciliation.
 - **Efficient Highest Bid Tracking**: Maintains current highest bid in aggregate state for O(1) lookups, avoiding O(n) scans of bid history.
 - **Fair Ordering**: Uses sequence numbers for price-time priority, with tie-breaking by sequence number for simultaneous bids.
@@ -45,7 +46,7 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 - **Global Sequence Number Generation**: Uses Redis atomic increments for per-auction monotonic sequence numbers, ensuring fairness in distributed environments. Replaced local AtomicLong with distributed SequenceService.
 - **Proper Bid Increment Strategy**: Proxy bidding uses configurable bid increment strategies instead of hardcoded values for accurate minimum bid calculations.
 - **Precise Anti-Snipe Timing**: Anti-snipe extensions use bid command's server timestamp for accurate timing, preventing approximation errors.
-- **Asynchronous Processing**: Bid placement is asynchronous with immediate response; proxy and automated bidding decoupled to maintain low latency via async execution.
+- **Proxy and Automated Bidding**: Integrated automated bidding strategies (sniping prevention, optimal timing, budget optimization, reinforcement learning) with async processing to maintain low latency.
 - **Adaptive Batched Bid Processing**: Processes queued bids with adaptive batch sizing based on queue load (1-20 bids per batch) to balance latency and throughput in high-frequency scenarios.
 - **Optimized Bid Queue Comparator**: Uses long-based comparison for Money amounts in priority queue to ensure correct price-time priority ordering with minimal latency.
 - **Thread Safety Enforcement**: Single-writer per auction enforced via sharding; concurrent access prevented at command bus level.
@@ -55,6 +56,7 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 - **Error Handling**: Proper exception handling in bid placement for accurate acceptance status.
 - **Batch Event Saves**: Multiple bid events saved in single DB transaction to reduce round trips.
 - **Aggregate State Sharing**: Proxy bidding uses shared aggregate state to avoid reloading events, improving performance.
+- **Aggregate Caching**: In-memory caching of aggregate state to reduce event store loads and improve reconstruction performance.
 
 ## Modules
 
