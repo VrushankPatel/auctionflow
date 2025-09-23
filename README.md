@@ -82,6 +82,17 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 
 API documentation is available at [https://api.auctionflow.com/docs](https://api.auctionflow.com/docs)
 
+### Key Endpoints
+
+- `POST /api/v1/auctions` - Create a new auction
+- `GET /api/v1/auctions` - List active auctions
+- `GET /api/v1/auctions/{id}` - Get auction details
+- `POST /api/v1/auctions/{id}/bids` - Place a bid
+- `POST /api/v1/auctions/{id}/buy-now` - Buy auction immediately
+- `POST /api/v1/auctions/{id}/offers` - Make an offer
+- `POST /api/v1/auctions/{id}/commits` - Commit bid for sealed auctions
+- `POST /api/v1/auctions/{id}/reveals` - Reveal bid for sealed auctions
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
