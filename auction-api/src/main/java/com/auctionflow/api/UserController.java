@@ -2,8 +2,11 @@ package com.auctionflow.api;
 
 // import com.auctionflow.analytics.AuditService;
 import com.auctionflow.api.dtos.CreateUserRequest;
+import com.auctionflow.api.dtos.UserBidsDTO;
 import com.auctionflow.api.entities.DocumentUpload;
 import com.auctionflow.api.entities.User;
+import com.auctionflow.api.queryhandlers.GetUserBidsQueryHandler;
+import com.auctionflow.api.queries.GetUserBidsQuery;
 import com.auctionflow.api.services.IdentityVerificationService;
 import com.auctionflow.api.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +31,9 @@ public class UserController {
 
     @Autowired
     private IdentityVerificationService identityVerificationService;
+
+    @Autowired
+    private GetUserBidsQueryHandler getUserBidsQueryHandler;
 
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody CreateUserRequest request) {
@@ -159,12 +165,13 @@ public class UserController {
     }
 
     @GetMapping("/{id}/bids")
-    public ResponseEntity<?> getUserBids(@PathVariable Long id) {
+    public ResponseEntity<?> getUserBids(@PathVariable Long id,
+                                         @RequestParam(defaultValue = "0") int page,
+                                         @RequestParam(defaultValue = "10") int size) {
         try {
-            // Assume userService has a method to get user bids
-            // List<Bid> bids = userService.getUserBids(id);
-            // return ResponseEntity.ok(bids);
-            return ResponseEntity.ok("Not implemented yet");
+            GetUserBidsQuery query = new GetUserBidsQuery(id.toString(), page, size);
+            UserBidsDTO dto = getUserBidsQueryHandler.handle(query);
+            return ResponseEntity.ok(dto);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Failed: " + e.getMessage());
         }

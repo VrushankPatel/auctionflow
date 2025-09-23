@@ -383,7 +383,7 @@ public class AuctionController {
         AuctionId auctionId = new AuctionId(UUID.fromString(id));
         UUID userId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Money maxBid = Money.usd(request.getAmount());
-        proxyBidService.setProxyBid(userId, auctionId, maxBid);
+        proxyBidService.setProxyBid(userId, auctionId, maxBid, null, null);
         return ResponseEntity.ok().build();
     }
 

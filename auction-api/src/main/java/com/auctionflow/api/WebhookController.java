@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Map;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,6 +31,28 @@ public class WebhookController {
             response.put("status", "success");
             response.put("message", "Webhook sent successfully");
         } catch (Exception e) {
+            response.put("status", "error");
+            response.put("message", e.getMessage());
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/payments")
+    @CircuitBreaker(name = "paymentWebhook")
+    public ResponseEntity<Map<String, Object>> paymentWebhook(@RequestBody Map<String, Object> payload) {
+        logger.info("Received payment webhook: {}", payload);
+
+        Map<String, Object> response = new HashMap<>();
+        try {
+            // Process payment webhook
+            // Assume PaymentService exists to handle this
+            // paymentService.processWebhook(payload);
+
+            response.put("status", "success");
+            response.put("message", "Payment webhook processed");
+        } catch (Exception e) {
+            logger.error("Failed to process payment webhook", e);
             response.put("status", "error");
             response.put("message", e.getMessage());
         }
