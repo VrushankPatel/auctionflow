@@ -175,11 +175,12 @@ public class AuctionController {
             return ResponseEntity.badRequest().build(); // Or return reason
         }
 
+        AuctionId auctionId = AuctionId.generate();
         ItemId itemId = new ItemId(UUID.fromString(request.getItemId()));
         SellerId sellerId = new SellerId(UUID.fromString(user.getId().toString()));
         Money reservePrice = Money.usd(request.getReservePrice());
         Money buyNowPrice = Money.usd(request.getBuyNowPrice());
-        CreateAuctionCommand cmd = new CreateAuctionCommand(itemId, sellerId, request.getCategoryId(), request.getAuctionType(), reservePrice, buyNowPrice, request.getStartTime(), request.getEndTime(), AntiSnipePolicy.none(), request.isHiddenReserve()); // Assuming default policy
+        CreateAuctionCommand cmd = new CreateAuctionCommand(auctionId, itemId, sellerId, request.getCategoryId(), request.getAuctionType(), reservePrice, buyNowPrice, request.getStartTime(), request.getEndTime(), AntiSnipePolicy.none(), request.isHiddenReserve()); // Assuming default policy
         commandBus.send(cmd);
         return ResponseEntity.ok().build();
     }

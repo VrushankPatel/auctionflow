@@ -1,6 +1,7 @@
 package com.auctionflow.core.domain.commands;
 
 import com.auctionflow.core.domain.valueobjects.AntiSnipePolicy;
+import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.AuctionType;
 import com.auctionflow.core.domain.valueobjects.ItemId;
 import com.auctionflow.core.domain.valueobjects.Money;
@@ -8,8 +9,11 @@ import com.auctionflow.core.domain.valueobjects.SellerId;
 
 import java.time.Instant;
 
-public record CreateAuctionCommand(ItemId itemId, SellerId sellerId, String categoryId, AuctionType auctionType, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, AntiSnipePolicy antiSnipePolicy, boolean hiddenReserve) {
+public record CreateAuctionCommand(AuctionId auctionId, ItemId itemId, SellerId sellerId, String categoryId, AuctionType auctionType, Money reservePrice, Money buyNowPrice, Instant startTime, Instant endTime, AntiSnipePolicy antiSnipePolicy, boolean hiddenReserve) {
     public CreateAuctionCommand {
+        if (auctionId == null) {
+            throw new IllegalArgumentException("AuctionId cannot be null");
+        }
         if (itemId == null) {
             throw new IllegalArgumentException("ItemId cannot be null");
         }

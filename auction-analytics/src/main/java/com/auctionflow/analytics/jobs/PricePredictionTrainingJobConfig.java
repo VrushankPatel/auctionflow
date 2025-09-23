@@ -6,6 +6,9 @@ import com.auctionflow.analytics.entities.Item;
 import com.auctionflow.analytics.entities.Seller;
 import com.auctionflow.analytics.repositories.AuctionRepository;
 import com.auctionflow.analytics.repositories.BidRepository;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import com.auctionflow.analytics.repositories.ItemRepository;
 import com.auctionflow.analytics.repositories.SellerRepository;
@@ -103,9 +106,15 @@ public class PricePredictionTrainingJobConfig {
     public ItemWriter<List<TrainingData>> pricePredictionTrainingWriter() {
         return items -> {
             for (List<TrainingData> dataList : items) {
-                // For now, just log the data. In real implementation, save to file or DB
+                // Save to CSV file for training
+                try (PrintWriter writer = new PrintWriter(new FileWriter("training_data.csv", true))) {
+                    for (TrainingData data : dataList) {
+                        writer.println(data.auctionId + "," + data.finalPrice);
+                    }
+                } catch (IOException e) {
+                    System.err.println("Failed to save training data: " + e.getMessage());
+                }
                 System.out.println("Collected " + dataList.size() + " training samples");
-                // TODO: Save to CSV or database for training
             }
         };
     }

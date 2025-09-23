@@ -105,7 +105,15 @@ public class OfferAggregate extends AggregateRoot {
 
     @Override
     public void handle(Object command) {
-        // TODO: implement command dispatching
+        if (command instanceof MakeOfferCommand c) {
+            handle(c);
+        } else if (command instanceof AcceptOfferCommand c) {
+            handle(c);
+        } else if (command instanceof RejectOfferCommand c) {
+            handle(c);
+        } else {
+            throw new IllegalArgumentException("Unknown command type: " + command.getClass());
+        }
     }
 
     @Override

@@ -5,6 +5,8 @@ import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.BidderId;
 import com.auctionflow.core.domain.valueobjects.Money;
 import com.auctionflow.events.persistence.AutomatedBidStrategyRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +23,7 @@ public class AutomatedBiddingService {
 
     private final Map<StrategyType, BiddingStrategy> strategies = new HashMap<>();
     private final AutomatedBidStrategyRepository strategyRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public AutomatedBiddingService(AutomatedBidStrategyRepository strategyRepository) {
         this.strategyRepository = strategyRepository;
@@ -90,7 +93,10 @@ public class AutomatedBiddingService {
 
     // Helper method
     private Map<String, Object> deserializeParameters(String json) {
-        // TODO: Use Jackson ObjectMapper
-        return new HashMap<>();
+        try {
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to deserialize parameters", e);
+        }
     }
 }

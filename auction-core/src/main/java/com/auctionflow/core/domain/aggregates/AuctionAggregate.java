@@ -97,7 +97,7 @@ public class AuctionAggregate extends AggregateRoot {
         if (this.id != null) {
             throw new IllegalStateException("Auction already created");
         }
-        AuctionId auctionId = AuctionId.generate();
+        AuctionId auctionId = command.auctionId();
         UUID eventId = UUID.randomUUID();
         Instant timestamp = Instant.now();
         long sequenceNumber = getVersion() + 1;
@@ -413,7 +413,25 @@ public class AuctionAggregate extends AggregateRoot {
 
     @Override
     public void handle(Object command) {
-        // TODO: implement command dispatching
+        if (command instanceof CreateAuctionCommand c) {
+            handle(c);
+        } else if (command instanceof PlaceBidCommand c) {
+            handle(c);
+        } else if (command instanceof BuyNowCommand c) {
+            handle(c);
+        } else if (command instanceof CloseAuctionCommand c) {
+            handle(c);
+        } else if (command instanceof StartRevealPhaseCommand c) {
+            handle(c);
+        } else if (command instanceof RevealBidCommand c) {
+            handle(c);
+        } else if (command instanceof CommitBidCommand c) {
+            handle(c);
+        } else if (command instanceof ExtendAuctionCommand c) {
+            handle(c);
+        } else {
+            throw new IllegalArgumentException("Unknown command type: " + command.getClass());
+        }
     }
 
     // Getters for testing or external access

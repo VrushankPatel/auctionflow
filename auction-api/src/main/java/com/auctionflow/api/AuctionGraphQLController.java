@@ -111,9 +111,11 @@ public class AuctionGraphQLController {
             throw new RuntimeException("Invalid item");
         }
 
+        AuctionId auctionId = AuctionId.generate();
         Money reservePrice = input.getReservePrice() != null ? Money.usd(BigDecimal.valueOf(input.getReservePrice())) : null;
         Money buyNowPrice = input.getBuyNowPrice() != null ? Money.usd(BigDecimal.valueOf(input.getBuyNowPrice())) : null;
         CreateAuctionCommand cmd = new CreateAuctionCommand(
+            auctionId,
             new com.auctionflow.core.domain.valueobjects.ItemId(UUID.fromString(input.getItemId())),
             new com.auctionflow.core.domain.valueobjects.SellerId(UUID.randomUUID()),
             input.getCategoryId(),
@@ -127,10 +129,9 @@ public class AuctionGraphQLController {
         );
         commandBus.send(cmd);
 
-        // Return the created auction - assuming command returns ID or we query it
-        // For simplicity, query by itemId or something, but actually need to get the auction ID
-        // This is a simplification; in real implementation, command should return the auction ID
-        return null; // TODO: implement properly
+        // Return the created auction details
+        GetAuctionDetailsQuery query = new GetAuctionDetailsQuery(auctionId.value().toString());
+        return detailsHandler.handle(query).orElse(null);
     }
 
     @MutationMapping

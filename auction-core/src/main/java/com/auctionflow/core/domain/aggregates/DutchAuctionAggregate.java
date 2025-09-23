@@ -53,7 +53,7 @@ public class DutchAuctionAggregate extends AggregateRoot {
         if (command.auctionType() != AuctionType.DUTCH) {
             throw new IllegalStateException("This aggregate is for Dutch auctions only");
         }
-        AuctionId auctionId = AuctionId.generate();
+        AuctionId auctionId = command.auctionId();
         // Assume reservePrice is startingPrice, buyNowPrice is minimumPrice
         Money startingPrice = command.reservePrice();
         Money minimumPrice = command.buyNowPrice();
@@ -198,12 +198,29 @@ public class DutchAuctionAggregate extends AggregateRoot {
 
     @Override
     public void handle(Object command) {
-        // TODO: implement command handling for Dutch auctions
+        if (command instanceof CreateAuctionCommand c) {
+            handle(c);
+        } else if (command instanceof PlaceBidCommand c) {
+            handle(c);
+        } else if (command instanceof ReducePriceCommand c) {
+            handle(c);
+        } else if (command instanceof CloseAuctionCommand c) {
+            handle(c);
+        } else {
+            throw new IllegalArgumentException("Unknown command type: " + command.getClass());
+        }
     }
 
     @Override
     public void apply(DomainEvent event) {
-        // TODO: implement event application
+        if (event instanceof AuctionCreatedEvent e) {
+            apply(e);
+        } else if (event instanceof BidPlacedEvent e) {
+            apply(e);
+        } else if (event instanceof AuctionClosedEvent e) {
+            apply(e);
+        }
+        // Add more event types as needed
     }
 
     public static class PriceHistoryEntry {

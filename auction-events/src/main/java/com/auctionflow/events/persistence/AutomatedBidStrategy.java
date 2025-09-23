@@ -4,6 +4,7 @@ import com.auctionflow.bidding.strategies.StrategyType;
 import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.BidderId;
 import com.auctionflow.core.domain.valueobjects.Money;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.Map;
@@ -44,6 +45,8 @@ public class AutomatedBidStrategy {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     // Constructors, getters, setters
 
     public AutomatedBidStrategy() {}
@@ -61,8 +64,11 @@ public class AutomatedBidStrategy {
 
     // Helper method to serialize parameters (implement with Jackson)
     private String serializeParameters(Map<String, Object> parameters) {
-        // TODO: Use Jackson ObjectMapper
-        return "{}";
+        try {
+            return objectMapper.writeValueAsString(parameters);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize parameters", e);
+        }
     }
 
     // Getters and setters
