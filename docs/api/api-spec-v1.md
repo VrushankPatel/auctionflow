@@ -9,29 +9,6 @@ AuctionFlow is a high-performance auction platform built with Spring Boot, provi
 **Content-Type:** `application/json`  
 **Rate Limits:** Vary by endpoint (see individual endpoint documentation)
 
-## Table of Contents
-
-1. [Core Concepts](#core-concepts)
-2. [Authentication Endpoints](#authentication-endpoints)
-3. [Auction Management](#auction-management)
-4. [Bidding Operations](#bidding-operations)
-5. [Item Management](#item-management)
-6. [User Management](#user-management)
-7. [Watchlist & Notifications](#watchlist--notifications)
-8. [Automated Bidding](#automated-bidding)
-9. [Reference Data](#reference-data)
-10. [Administrative Operations](#administrative-operations)
-11. [Payment Integration](#payment-integration)
-12. [Real-time Features](#real-time-features)
-13. [Error Handling](#error-handling)
-14. [Rate Limiting](#rate-limiting)
-15. [Data Types](#data-types)
-16. [Security Considerations](#security-considerations)
-17. [Performance Characteristics](#performance-characteristics)
-18. [Versioning](#versioning)
-19. [Testing](#testing)
-20. [Support](#support)
-
 ## Core Concepts
 
 ### Auction Types
@@ -43,7 +20,7 @@ AuctionFlow is a high-performance auction platform built with Spring Boot, provi
 
 ### Auction Status
 - `PENDING`: Created but not yet active
-- `OPEN`: Accepting bids
+- `ACTIVE`: Accepting bids
 - `ENDED`: Closed, winner determined
 - `CANCELLED`: Terminated by seller/admin
 
@@ -156,7 +133,7 @@ List auctions with filtering and pagination.
 - `category`: Item category filter
 - `sellerId`: Filter by seller
 - `query`: Full-text search
-- `page`: Page number (0-based)
+- `page`: Page number (default 0)
 - `size`: Page size (max 100)
 
 **Response (200):**
@@ -165,7 +142,7 @@ List auctions with filtering and pagination.
   "auctions": [
     {
       "id": "uuid",
-      "title": "Vintage Watch",
+      "title": "Vintage Camera",
       "currentHighestBid": 150.00,
       "bidCount": 5,
       "endTime": "2024-01-01T12:00:00Z",
@@ -186,14 +163,14 @@ Get detailed auction information.
 {
   "id": "uuid",
   "item": {
-    "title": "Vintage Watch",
+    "title": "Vintage Camera",
     "description": "Rare collectible",
-    "category": "watches",
+    "category": "electronics",
     "images": ["url1.jpg"]
   },
   "seller": {
     "id": "uuid",
-    "displayName": "WatchSeller"
+    "displayName": "PhotoExpert"
   },
   "currentHighestBid": 150.00,
   "bidCount": 5,
@@ -425,7 +402,7 @@ Get user's bid history.
   "bids": [
     {
       "auctionId": "uuid",
-      "auctionTitle": "Vintage Watch",
+      "auctionTitle": "Vintage Camera",
       "amount": 160.00,
       "status": "WINNING",
       "timestamp": "2024-01-01T11:30:00Z"
@@ -518,8 +495,8 @@ Get item categories.
       "parentId": null
     },
     {
-      "id": "watches",
-      "name": "Watches",
+      "id": "cameras",
+      "name": "Cameras",
       "parentId": "electronics"
     }
   ]
@@ -687,20 +664,20 @@ All endpoints return standard HTTP status codes with detailed error responses:
 ## Data Types
 
 ### Monetary Values
-- All amounts in USD cents (integers)
-- Example: $1.50 = 150
+All amounts in USD cents (integers)
+Example: $1.50 = 150
 
 ### Timestamps
-- ISO 8601 format with timezone
-- Example: `2024-01-01T11:30:00Z`
+ISO 8601 format with timezone
+Example: `2024-01-01T11:30:00Z`
 
 ### Identifiers
-- UUID strings for all entity IDs
-- Example: `550e8400-e29b-41d4-a716-446655440000`
+UUID strings for all entity IDs
+Example: `550e8400-e29b-41d4-a716-446655440000`
 
 ### Sequence Numbers
-- 64-bit integers for ordering
-- Monotonic per auction for bid ordering
+64-bit integers for ordering
+Monotonic per auction for bid ordering
 
 ## Security Considerations
 
@@ -785,4 +762,4 @@ All endpoints return standard HTTP status codes with detailed error responses:
 
 ---
 
-*This specification provides a comprehensive and easy-to-understand guide to the AuctionFlow API. For the latest updates, refer to the official documentation.*
+*This specification provides a comprehensive overview of the AuctionFlow API. For the latest updates, refer to the official documentation.*
