@@ -31,4 +31,8 @@ public abstract class DomainEvent {
     public long getSequenceNumber() {
         return sequenceNumber;
     }
+
+    public String getEventType() {
+        return this.getClass().getSimpleName();
+    }
 }

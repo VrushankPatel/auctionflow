@@ -3,6 +3,7 @@ package com.auctionflow.api.entities;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Where;
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users")
@@ -12,37 +13,42 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(name = "email", unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = false)
+    @Column(name = "display_name", nullable = false)
     private String displayName;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "role", nullable = false)
     private Role role;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "kyc_status", nullable = false)
     private KycStatus kycStatus = KycStatus.PENDING;
 
-    @Column(nullable = false)
+    @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    @Column(name = "totp_secret")
     private String totpSecret;
 
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    @Column(nullable = false)
+    @Column(name = "consent_given", nullable = false)
     private boolean consentGiven = false;
 
-    private Instant consentDate;
+    @Column(name = "consent_date")
+    private Instant consent_date;
 
-    @Column(nullable = false)
+    @Column(name = "data_processing_consent", nullable = false)
     private boolean dataProcessingConsent = false;
 
+    @Column(name = "deleted_at")
     private Instant deletedAt;
+
+    @Column(name = "deleted_by")
     private Long deletedBy;
 
     public enum Role {
@@ -82,8 +88,8 @@ public class User {
     public boolean isConsentGiven() { return consentGiven; }
     public void setConsentGiven(boolean consentGiven) { this.consentGiven = consentGiven; }
 
-    public Instant getConsentDate() { return consentDate; }
-    public void setConsentDate(Instant consentDate) { this.consentDate = consentDate; }
+    public Instant getConsentDate() { return consent_date; }
+    public void setConsentDate(Instant consentDate) { this.consent_date = consentDate; }
 
     public boolean isDataProcessingConsent() { return dataProcessingConsent; }
     public void setDataProcessingConsent(boolean dataProcessingConsent) { this.dataProcessingConsent = dataProcessingConsent; }

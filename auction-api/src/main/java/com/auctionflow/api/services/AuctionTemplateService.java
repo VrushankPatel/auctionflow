@@ -96,7 +96,7 @@ public class AuctionTemplateService {
             // Create item
             Item item = new Item();
             item.setId(UUID.randomUUID().toString());
-            item.setSellerId(sellerId);
+            item.setSellerId(Long.parseLong(sellerId));
             item.setTitle(itemTitle);
             item.setDescription(itemDescription);
             item.setCategoryId(categoryId);

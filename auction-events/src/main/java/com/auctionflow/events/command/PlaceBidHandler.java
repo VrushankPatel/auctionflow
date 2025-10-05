@@ -16,7 +16,7 @@ import com.auctionflow.core.domain.valueobjects.Money;
 import com.auctionflow.events.AggregateCacheService;
 import com.auctionflow.common.service.EventStore;
 import com.auctionflow.events.persistence.ProxyBidEntity;
-import com.auctionflow.events.persistence.ProxyBidRepository;
+import com.auctionflow.events.persistence.EventProxyBidRepository;
 
 import com.auctionflow.events.command.AutomatedBiddingService;
 import com.auctionflow.bidding.strategies.BidDecision;
@@ -41,18 +41,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Component
-public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
+public class PlaceBidHandler {
 
     private final EventStore eventStore;
     private final KafkaTemplate<String, DomainEvent> kafkaTemplate;
     private final RedissonClient redissonClient;
-    private final ProxyBidRepository proxyBidRepository;
+    private final EventProxyBidRepository proxyBidRepository;
     private final AutomatedBiddingService automatedBiddingService;
     private final AggregateCacheService aggregateCacheService;
     // Scheduled executor for non-blocking retries
     private final ScheduledExecutorService retryExecutor = Executors.newScheduledThreadPool(10);
 
-    public PlaceBidHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient, ProxyBidRepository proxyBidRepository, AutomatedBiddingService automatedBiddingService, AggregateCacheService aggregateCacheService) {
+    public PlaceBidHandler(EventStore eventStore, KafkaTemplate<String, DomainEvent> kafkaTemplate, RedissonClient redissonClient, EventProxyBidRepository proxyBidRepository, AutomatedBiddingService automatedBiddingService, AggregateCacheService aggregateCacheService) {
         this.eventStore = eventStore;
         this.kafkaTemplate = kafkaTemplate;
         this.redissonClient = redissonClient;
@@ -61,7 +61,6 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
         this.aggregateCacheService = aggregateCacheService;
     }
 
-    @Override
     @Async
     @EventListener
     @WithSpan("process-bid-command")
@@ -198,7 +197,7 @@ public class PlaceBidHandler implements CommandHandler<PlaceBidCommand> {
             // Place the automatic bid
             Instant proxyServerTs = Instant.now();
             long proxySeqNo = generateSeqNo(auctionId);
-            PlaceBidCommand proxyCommand = new PlaceBidCommand(auctionId, proxyBid.getUserId(), nextBidAmount, "proxy-" + proxyBid.getId(), proxyServerTs, proxySeqNo);
+            PlaceBidCommand proxyCommand = new PlaceBidCommand(auctionId, proxyBid.getUserId().toString(), nextBidAmount, "proxy-" + proxyBid.getId(), proxyServerTs, proxySeqNo);
             // Directly handle the proxy bid on the aggregate
             auctionAgg.handle(proxyCommand);
             List<DomainEvent> proxyEvents = auctionAgg.getDomainEvents();

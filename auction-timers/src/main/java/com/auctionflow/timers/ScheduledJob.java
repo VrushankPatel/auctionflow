@@ -13,7 +13,7 @@ public class ScheduledJob {
     private UUID jobId;
 
     @Column(name = "auction_id", nullable = false)
-    private UUID auctionId;
+    private String auctionId;
 
     @Column(name = "execute_at", nullable = false)
     private Instant executeAt;
@@ -39,7 +39,7 @@ public class ScheduledJob {
     // Constructors
     public ScheduledJob() {}
 
-    public ScheduledJob(UUID jobId, UUID auctionId, Instant executeAt) {
+    public ScheduledJob(UUID jobId, String auctionId, Instant executeAt) {
         this.jobId = jobId;
         this.auctionId = auctionId;
         this.executeAt = executeAt;
@@ -56,11 +56,11 @@ public class ScheduledJob {
         this.jobId = jobId;
     }
 
-    public UUID getAuctionId() {
+    public String getAuctionId() {
         return auctionId;
     }
 
-    public void setAuctionId(UUID auctionId) {
+    public void setAuctionId(String auctionId) {
         this.auctionId = auctionId;
     }
 

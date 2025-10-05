@@ -1,0 +1,6 @@
+FROM node:20-slim as frontend-builder
+WORKDIR /app/frontend
+COPY auctionflow-ui/package*.json ./
+RUN npm install
+COPY auctionflow-ui/ ./
+RUN npm run build

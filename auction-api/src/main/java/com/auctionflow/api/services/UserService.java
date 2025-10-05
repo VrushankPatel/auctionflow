@@ -23,10 +23,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
@@ -54,6 +56,7 @@ public class UserService implements UserDetailsService {
     private final CodeVerifier codeVerifier = new DefaultCodeVerifier(new DefaultCodeGenerator(), timeProvider);
 
     public User createUser(String email, String displayName, String password, String roleStr) {
+        if (roleStr == null) roleStr = "BUYER";
         User.Role role = User.Role.valueOf(roleStr.toUpperCase());
         if (userRepository.findByEmail(email).isPresent()) {
             throw new RuntimeException("User already exists");
@@ -237,7 +240,7 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
         ObjectMapper mapper = new ObjectMapper();
         ObjectNode root = mapper.createObjectNode();
-        root.put("userId", user.getId());
+        root.put("userId", user.getId().toString());
         root.put("email", user.getEmail());
         root.put("displayName", user.getDisplayName());
         root.put("role", user.getRole().name());

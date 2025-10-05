@@ -1,3 +1,8 @@
+-- Database will be created by the create-multiple-postgresql-databases.sh script
+
+-- Switch to auctionflow database for table creation
+\c auctionflow;
+
 SELECT pg_create_physical_replication_slot('replica_slot');
 
 -- Partitioned event_store table by month
@@ -37,32 +42,11 @@ END $$;
 -- Drop the function after use
 DROP FUNCTION create_event_store_partition(TEXT);
 
+-- For partitioned tables, unique index must include partition key
 CREATE UNIQUE INDEX IF NOT EXISTS idx_event_store_aggregate_id_sequence
-ON event_store (aggregate_id, sequence_number);
+ON event_store (aggregate_id, sequence_number, timestamp);
 
 -- Read models for auction-api
-
--- Denormalized view for auction summary (listing auctions)
-CREATE VIEW auction_summary AS
-SELECT
-    a.id AS auction_id,
-    i.title AS item_title,
-    i.description AS item_description,
-    u.display_name AS seller_name,
-    i.category_id AS category,
-    a.start_ts,
-    a.end_ts,
-    a.status,
-    a.reserve_price,
-    a.buy_now_price,
-    -- Assuming current_highest_bid is computed from bids
-    (SELECT MAX(amount) FROM bids b WHERE b.auction_id = a.id AND b.accepted_bool = true) AS current_highest_bid,
-    (SELECT COUNT(*) FROM bids b WHERE b.auction_id = a.id AND b.accepted_bool = true) AS bid_count,
-    a.created_at
-FROM auctions a
-JOIN items i ON a.item_id = i.id
-JOIN sellers s ON i.seller_id = s.id
-JOIN users u ON s.user_id = u.id;
 
 -- Auction details table (for detailed auction info)
 CREATE TABLE auction_details (
@@ -92,9 +76,6 @@ CREATE TABLE auction_details (
 CREATE INDEX idx_auction_details_status_end_ts_category ON auction_details (status, end_ts, category);
 CREATE INDEX idx_auction_details_seller_id_status ON auction_details (seller_id, status);
 
-CREATE INDEX idx_bid_history_auction_id_server_ts_accepted ON bid_history (auction_id, server_ts DESC, accepted);
-CREATE INDEX idx_bid_history_bidder_id_server_ts ON bid_history (bidder_id, server_ts DESC);
-
 -- Bid history table (for bid listings)
 CREATE TABLE bid_history (
     id BIGSERIAL PRIMARY KEY,
@@ -108,6 +89,8 @@ CREATE TABLE bid_history (
 
 CREATE INDEX idx_bid_history_auction_id_ts ON bid_history (auction_id, server_ts DESC);
 CREATE INDEX idx_bid_history_bidder_id_ts ON bid_history (bidder_id, server_ts DESC);
+CREATE INDEX idx_bid_history_auction_id_server_ts_accepted ON bid_history (auction_id, server_ts DESC, accepted);
+CREATE INDEX idx_bid_history_bidder_id_server_ts ON bid_history (bidder_id, server_ts DESC);
 
 -- User watchlist table
 CREATE TABLE user_watchlist (
@@ -429,19 +412,98 @@ CREATE TABLE archived_bids (
     archived_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE archived_events (
-    id BIGSERIAL PRIMARY KEY,
-    aggregate_id VARCHAR(255) NOT NULL,
-    aggregate_type VARCHAR(255) NOT NULL,
-    event_type VARCHAR(255) NOT NULL,
-    compressed_event_data BYTEA NOT NULL, -- GZIP compressed JSON
-    event_metadata BYTEA, -- GZIP compressed JSON
-    sequence_number BIGINT NOT NULL,
-    timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-    archived_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
+ CREATE TABLE archived_events (
+     id BIGSERIAL PRIMARY KEY,
+     aggregate_id VARCHAR(255) NOT NULL,
+     aggregate_type VARCHAR(255) NOT NULL,
+     event_type VARCHAR(255) NOT NULL,
+     compressed_event_data oid NOT NULL, -- GZIP compressed JSON
+     event_metadata oid, -- GZIP compressed JSON
+     sequence_number BIGINT NOT NULL,
+     timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+     archived_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+ );
 
 -- Indexes for archive tables
 CREATE INDEX idx_archived_auctions_end_ts ON archived_auctions (end_ts);
 CREATE INDEX idx_archived_bids_auction_id ON archived_bids (auction_id);
 CREATE INDEX idx_archived_events_aggregate_id ON archived_events (aggregate_id, sequence_number);
+
+-- Write model tables
+
+-- Users table
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    display_name VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    kyc_status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    password_hash VARCHAR(255) NOT NULL,
+    totp_secret VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    consent_given BOOLEAN NOT NULL DEFAULT false,
+    consent_date TIMESTAMP WITH TIME ZONE,
+    data_processing_consent BOOLEAN NOT NULL DEFAULT false,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    deleted_by BIGINT
+);
+
+-- Items table
+CREATE TABLE items (
+    id VARCHAR(255) PRIMARY KEY,
+    seller_id BIGINT,
+    title VARCHAR(255),
+    description TEXT,
+    category_id VARCHAR(255),
+    brand VARCHAR(255),
+    serial_number VARCHAR(255),
+    images TEXT[],
+    metadata JSONB
+);
+
+-- Auctions table
+CREATE TABLE auctions (
+    id VARCHAR(255) PRIMARY KEY,
+    item_id VARCHAR(255),
+    seller_id BIGINT,
+    status VARCHAR(50),
+    start_ts TIMESTAMP WITH TIME ZONE,
+    end_ts TIMESTAMP WITH TIME ZONE,
+    encrypted_reserve_price TEXT,
+    buy_now_price DECIMAL(10,2),
+    hidden_reserve BOOLEAN,
+    current_highest_bid DECIMAL(10,2),
+    current_highest_bidder BIGINT,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    deleted_by BIGINT
+);
+
+-- Bids table
+CREATE TABLE bids (
+    id BIGSERIAL PRIMARY KEY,
+    auction_id VARCHAR(255),
+    bidder_id BIGINT,
+    amount DECIMAL(10,2),
+    server_ts TIMESTAMP WITH TIME ZONE,
+    seq_no BIGINT,
+    accepted BOOLEAN,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    deleted_by BIGINT
+);
+
+-- Insert sample data for testing
+
+-- Insert sample users
+INSERT INTO users (email, display_name, role, kyc_status, password_hash, created_at, consent_given, data_processing_consent) VALUES
+('seller@example.com', 'John Seller', 'SELLER', 'VERIFIED', 'hashedpassword', NOW(), true, true),
+('bidder@example.com', 'Jane Bidder', 'BUYER', 'VERIFIED', 'hashedpassword', NOW(), true, true);
+
+-- Insert sample items
+INSERT INTO items (id, seller_id, title, description, category_id, brand, serial_number, images, metadata) VALUES
+('item-001', 1, 'Vintage Watch', 'A beautiful vintage watch', 'watches', 'Rolex', 'SN12345', ARRAY['image1.jpg'], '{"condition": "excellent"}'),
+('item-002', 1, 'Antique Vase', 'Rare antique vase', 'decor', 'Unknown', 'SN67890', ARRAY['vase.jpg'], '{"condition": "good"}');
+
+-- Insert sample auctions
+INSERT INTO auctions (id, item_id, seller_id, status, start_ts, end_ts, buy_now_price, hidden_reserve, current_highest_bid, current_highest_bidder) VALUES
+('auction-001', 'item-001', 1, 'OPEN', NOW() - INTERVAL '1 day', NOW() + INTERVAL '7 days', 500.00, false, 150.00, 2),
+('auction-002', 'item-002', 1, 'OPEN', NOW() - INTERVAL '2 days', NOW() + INTERVAL '5 days', 300.00, true, null, null);

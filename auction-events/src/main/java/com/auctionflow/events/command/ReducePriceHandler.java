@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public class ReducePriceHandler implements CommandHandler<ReducePriceCommand> {
+public class ReducePriceHandler {
 
     private final EventStore eventStore;
     private final KafkaTemplate<String, DomainEvent> kafkaTemplate;
@@ -28,7 +28,6 @@ public class ReducePriceHandler implements CommandHandler<ReducePriceCommand> {
         this.redissonClient = redissonClient;
     }
 
-    @Override
     @Async
     @EventListener
     public void handle(ReducePriceCommand command) {

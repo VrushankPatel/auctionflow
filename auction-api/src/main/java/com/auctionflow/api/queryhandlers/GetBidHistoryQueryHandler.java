@@ -3,7 +3,7 @@ package com.auctionflow.api.queryhandlers;
 import com.auctionflow.api.dtos.BidHistoryDTO;
 import com.auctionflow.api.queries.GetBidHistoryQuery;
 import com.auctionflow.api.repositories.BidReadRepository;
-import org.springframework.cache.annotation.Cacheable;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,7 +18,6 @@ public class GetBidHistoryQueryHandler {
         this.bidReadRepository = bidReadRepository;
     }
 
-    @Cacheable(value = "bidHistory", key = "#query.auctionId + '_' + #query.page + '_' + #query.size")
     public BidHistoryDTO handle(GetBidHistoryQuery query) {
         Pageable pageable = PageRequest.of(query.getPage(), query.getSize());
         Page<BidHistoryDTO.BidDTO> page = bidReadRepository.findBidHistoryByAuctionId(query.getAuctionId(), pageable);

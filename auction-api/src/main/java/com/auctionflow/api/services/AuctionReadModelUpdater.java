@@ -21,7 +21,7 @@ public class AuctionReadModelUpdater {
         Auction auction = auctionRepository.findById(event.getAggregateId().toString()).orElse(null);
         if (auction != null) {
             auction.setCurrentHighestBid(event.getAmount().toBigDecimal());
-            auction.setCurrentHighestBidder(event.getBidderId().toString());
+            auction.setCurrentHighestBidder(Long.parseLong(event.getBidderId()));
             auctionRepository.save(auction);
         }
     }

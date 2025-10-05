@@ -1,5 +1,6 @@
 package com.auctionflow.api.config;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -14,6 +15,7 @@ import java.util.Map;
 
 @Configuration
 @EnableCaching
+@ConditionalOnBean(RedisConnectionFactory.class)
 public class CacheConfig {
 
     @Bean

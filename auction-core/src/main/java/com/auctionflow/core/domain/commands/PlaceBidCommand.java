@@ -4,15 +4,14 @@ import com.auctionflow.core.domain.valueobjects.AuctionId;
 import com.auctionflow.core.domain.valueobjects.Money;
 
 import java.time.Instant;
-import java.util.UUID;
 
-public record PlaceBidCommand(AuctionId auctionId, UUID bidderId, Money amount, String idempotencyKey, Instant serverTs, long seqNo) {
+public record PlaceBidCommand(AuctionId auctionId, String bidderId, Money amount, String idempotencyKey, Instant serverTs, long seqNo) {
     public PlaceBidCommand {
         if (auctionId == null) {
             throw new IllegalArgumentException("AuctionId cannot be null");
         }
-        if (bidderId == null) {
-            throw new IllegalArgumentException("BidderId cannot be null");
+        if (bidderId == null || bidderId.isBlank()) {
+            throw new IllegalArgumentException("BidderId cannot be null or blank");
         }
         if (amount == null) {
             throw new IllegalArgumentException("Amount cannot be null");

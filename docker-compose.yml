@@ -1,60 +1,22 @@
-version: '3.8'
-
 services:
-   postgres-primary:
-     image: postgres:15
-     container_name: postgres-primary
-     environment:
-       POSTGRES_DB: ${POSTGRES_DB}
-       POSTGRES_USER: ${POSTGRES_USER}
-       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-     volumes:
-       - postgres_primary_data:/var/lib/postgresql/data
-       - ./postgres/init-primary.sql:/docker-entrypoint-initdb.d/init.sql
-       - ./postgres/postgresql-primary.conf:/etc/postgresql/postgresql.conf
-       - postgres_archive:/var/lib/postgresql/archive
+  postgres-primary:
+    image: postgres:15
+    container_name: postgres-primary
+    environment:
+      POSTGRES_DB: auctionflow
+      POSTGRES_USER: auction_user
+      POSTGRES_PASSWORD: secure_password_here
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./postgres/init-primary.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgres/postgresql-primary.conf:/etc/postgresql/postgresql.conf
+      - postgres_archive:/var/lib/postgresql/archive
     ports:
       - "5432:5432"
     networks:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  postgres-replica:
-    image: postgres:15
-    container_name: postgres-replica
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PGUSER: ${POSTGRES_USER}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_replica_data:/var/lib/postgresql/data
-    depends_on:
-      postgres-primary:
-        condition: service_healthy
-    command: >
-      bash -c "
-      until pg_basebackup -h postgres-primary -D /var/lib/postgresql/data -U ${POSTGRES_USER} -vP -W --wal-method=stream --slot=replica_slot; do
-        echo 'Waiting for primary...'
-        sleep 2
-      done
-      echo 'host replication ${POSTGRES_USER} 0.0.0.0/0 md5' >> /var/lib/postgresql/data/pg_hba.conf
-      echo \"primary_conninfo = 'host=postgres-primary port=5432 user=${POSTGRES_USER} password=${POSTGRES_PASSWORD}'\" >> /var/lib/postgresql/data/postgresql.conf
-      echo 'hot_standby = on' >> /var/lib/postgresql/data/postgresql.conf
-      exec postgres -c config_file=/var/lib/postgresql/data/postgresql.conf
-      "
-    ports:
-      - "5433:5432"
-    networks:
-      - backend
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U auction_user -d auctionflow"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,71 +25,11 @@ services:
   redis-1:
     image: redis:7
     container_name: redis-1
-    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
+    command: redis-server --port 6379
     ports:
-      - "7001:6379"
+      - "6379:6379"
     volumes:
       - redis1_data:/data
-    networks:
-      - backend
-    restart: unless-stopped
-
-  redis-2:
-    image: redis:7
-    container_name: redis-2
-    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
-    ports:
-      - "7002:6379"
-    volumes:
-      - redis2_data:/data
-    networks:
-      - backend
-    restart: unless-stopped
-
-  redis-3:
-    image: redis:7
-    container_name: redis-3
-    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
-    ports:
-      - "7003:6379"
-    volumes:
-      - redis3_data:/data
-    networks:
-      - backend
-    restart: unless-stopped
-
-  redis-4:
-    image: redis:7
-    container_name: redis-4
-    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
-    ports:
-      - "7004:6379"
-    volumes:
-      - redis4_data:/data
-    networks:
-      - backend
-    restart: unless-stopped
-
-  redis-5:
-    image: redis:7
-    container_name: redis-5
-    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
-    ports:
-      - "7005:6379"
-    volumes:
-      - redis5_data:/data
-    networks:
-      - backend
-    restart: unless-stopped
-
-  redis-6:
-    image: redis:7
-    container_name: redis-6
-    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
-    ports:
-      - "7006:6379"
-    volumes:
-      - redis6_data:/data
     networks:
       - backend
     restart: unless-stopped
@@ -163,143 +65,51 @@ services:
       - backend
     restart: unless-stopped
 
-  kafka-2:
-    image: confluentinc/cp-kafka:7.4.0
-    container_name: kafka-2
-    environment:
-      KAFKA_BROKER_ID: 2
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9093,PLAINTEXT_INTERNAL://kafka-2:29092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+  auction-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auction-api
     ports:
-      - "9093:9092"
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-primary:5432/auctionflow
+      SPRING_DATASOURCE_USERNAME: auction_user
+      SPRING_DATASOURCE_PASSWORD: secure_password_here
+      SPRING_REDIS_HOST: redis-1
+      SPRING_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka-1:29092
+      JWT_SECRET: mySecretKey1234567890123456789012345678901234567890
+      JWT_EXPIRATION: 86400000
+      JWT_REFRESH_EXPIRATION: 604800000
+      MANAGEMENT_HEALTH_REDIS_ENABLED: false
     depends_on:
-      - zookeeper
+      - postgres-primary
+      - redis-1
+      - kafka-1
     networks:
       - backend
     restart: unless-stopped
+    volumes:
+      - ./auction-api/uploads:/app/uploads
 
-  kafka-3:
-    image: confluentinc/cp-kafka:7.4.0
-    container_name: kafka-3
-    environment:
-      KAFKA_BROKER_ID: 3
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9094,PLAINTEXT_INTERNAL://kafka-3:29092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+  auction-ui:
+    build:
+      context: ./auctionflow-ui
+      dockerfile: Dockerfile
+    container_name: auction-ui
     ports:
-      - "9094:9092"
+      - "3001:80"
     depends_on:
-      - zookeeper
+      - auction-api
     networks:
       - backend
     restart: unless-stopped
-
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    container_name: elasticsearch
-    environment:
-      discovery.type: single-node
-      xpack.security.enabled: false
-      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-    ports:
-      - "9200:9200"
-      - "9300:9300"
-    networks:
-      - backend
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana
-    container_name: grafana
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD}
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
-      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
-    ports:
-      - "3000:3000"
-    networks:
-      - monitoring
-    restart: unless-stopped
-
-  prometheus:
-    image: prom/prometheus
-    container_name: prometheus
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
-    networks:
-      - monitoring
-    restart: unless-stopped
-
-   jaeger:
-     image: jaegertracing/all-in-one
-     container_name: jaeger
-     ports:
-       - "16686:16686"
-       - "14268:14268"
-     networks:
-       - monitoring
-     restart: unless-stopped
-
-   kibana:
-     image: docker.elastic.co/kibana/kibana:8.11.0
-     container_name: kibana
-     environment:
-       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
-     ports:
-       - "5601:5601"
-     depends_on:
-       - elasticsearch
-     networks:
-       - backend
-     restart: unless-stopped
-
-   filebeat:
-     image: docker.elastic.co/beats/filebeat:8.11.0
-     container_name: filebeat
-     user: root
-     volumes:
-       - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-       - /var/lib/docker/containers:/var/lib/docker/containers:ro
-       - /var/run/docker.sock:/var/run/docker.sock:ro
-     depends_on:
-       - elasticsearch
-     networks:
-       - backend
-     restart: unless-stopped
 
 networks:
   backend:
-  monitoring:
 
 volumes:
-   postgres_primary_data:
-   postgres_replica_data:
-   postgres_archive:
+  postgres_primary_data:
+  postgres_archive:
   redis1_data:
-  redis2_data:
-  redis3_data:
-  redis4_data:
-  redis5_data:
-  redis6_data:
-  elasticsearch_data:
-  grafana_data:
-  prometheus_data:

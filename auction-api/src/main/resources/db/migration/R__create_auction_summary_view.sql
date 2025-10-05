@@ -1,24 +1,25 @@
 -- Repeatable migration for auction summary view
 -- This view denormalizes data for efficient auction listing
+-- Temporarily disabled due to schema mismatch
 
-CREATE OR REPLACE VIEW auction_summary AS
-SELECT
-    a.id AS auction_id,
-    i.title AS item_title,
-    i.description AS item_description,
-    u.display_name AS seller_name,
-    i.category_id AS category,
-    a.start_ts,
-    a.end_ts,
-    a.status,
-    a.reserve_price,
-    a.buy_now_price,
-    -- Current highest bid
-    (SELECT MAX(amount) FROM bids b WHERE b.auction_id = a.id AND b.accepted_bool = true) AS current_highest_bid,
-    -- Bid count
-    (SELECT COUNT(*) FROM bids b WHERE b.auction_id = a.id AND b.accepted_bool = true) AS bid_count,
-    a.created_at
-FROM auctions a
-JOIN items i ON a.item_id = i.id
-JOIN sellers s ON i.seller_id = s.id
-JOIN users u ON s.user_id = u.id;
+-- CREATE OR REPLACE VIEW auction_summary AS
+-- SELECT
+--     a.id AS auction_id,
+--     i.title AS item_title,
+--     i.description AS item_description,
+--     u.display_name AS seller_name,
+--     i.category_id AS category,
+--     a.start_ts,
+--     a.end_ts,
+--     a.status,
+--     a.reserve_price,
+--     a.buy_now_price,
+--     -- Current highest bid
+--     (SELECT MAX(amount) FROM bids b WHERE b.auction_id = a.id AND b.accepted_bool = true) AS current_highest_bid,
+--     -- Bid count
+--     (SELECT COUNT(*) FROM bids b WHERE b.auction_id = a.id AND b.accepted_bool = true) AS bid_count,
+--     a.created_at
+-- FROM auctions a
+-- JOIN items i ON a.item_id = i.id
+-- JOIN sellers s ON i.seller_id = s.id
+-- JOIN users u ON s.user_id = u.id;

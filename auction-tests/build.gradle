@@ -25,9 +25,9 @@ dependencies {
     testImplementation 'org.awaitility:awaitility'
 
     // Pact dependencies for contract testing
-    testImplementation 'au.com.dius.pact.consumer:junit5:4.6.11'
-    testImplementation 'au.com.dius.pact.provider:junit5:4.6.11'
-    testImplementation 'au.com.dius.pact.provider:spring:4.6.11'
+    testImplementation 'au.com.dius.pact.consumer:junit5:4.6.17'
+    testImplementation 'au.com.dius.pact.provider:junit5:4.6.17'
+    testImplementation 'au.com.dius.pact.provider:spring:4.6.17'
 
     // Selenium for end-to-end tests
     testImplementation 'org.seleniumhq.selenium:selenium-java:4.15.0'

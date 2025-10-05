@@ -1,0 +1,116 @@
+services:
+  postgres-primary:
+    image: postgres:15
+    container_name: postgres-primary
+    environment:
+      POSTGRES_DB: auctionflow
+      POSTGRES_USER: auction_user
+      POSTGRES_PASSWORD: secure_password_here
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./postgres/init-primary.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgres/postgresql-primary.conf:/etc/postgresql/postgresql.conf
+      - postgres_archive:/var/lib/postgresql/archive
+    ports:
+      - "5432:5432"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auction_user -d auctionflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis-1:
+    image: redis:7
+    container_name: redis-1
+    command: redis-server --port 6379
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis1_data:/data
+    networks:
+      - backend
+    restart: unless-stopped
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - backend
+    restart: unless-stopped
+
+  kafka-1:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka-1
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka-1:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    networks:
+      - backend
+    restart: unless-stopped
+
+  auction-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auction-api
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-primary:5432/auctionflow
+      SPRING_DATASOURCE_USERNAME: auction_user
+      SPRING_DATASOURCE_PASSWORD: secure_password_here
+      SPRING_REDIS_HOST: redis-1
+      SPRING_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka-1:29092
+      JWT_SECRET: mySecretKey1234567890123456789012345678901234567890
+      JWT_EXPIRATION: 86400000
+      JWT_REFRESH_EXPIRATION: 604800000
+      MANAGEMENT_HEALTH_REDIS_ENABLED: false
+    depends_on:
+      - postgres-primary
+      - redis-1
+      - kafka-1
+    networks:
+      - backend
+    restart: unless-stopped
+    volumes:
+      - ./auction-api/uploads:/app/uploads
+
+  auction-ui:
+    build:
+      context: ./auctionflow-ui
+      dockerfile: Dockerfile
+    container_name: auction-ui
+    ports:
+      - "3001:80"
+    depends_on:
+      - auction-api
+    networks:
+      - backend
+    restart: unless-stopped
+
+networks:
+  backend:
+
+volumes:
+  postgres_primary_data:
+  postgres_archive:
+  redis1_data:

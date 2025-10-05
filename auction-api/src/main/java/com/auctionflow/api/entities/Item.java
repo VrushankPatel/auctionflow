@@ -15,11 +15,15 @@ import java.util.List;
 public class Item {
     @Id
     private String id;
-    private String sellerId;
+    @Column(name = "seller_id")
+    private Long sellerId;
+    @Column(name = "title", columnDefinition = "VARCHAR(255)")
     private String title;
     private String description;
+    @Column(name = "category_id")
     private String categoryId;
     private String brand;
+    @Column(name = "serial_number")
     private String serialNumber;
     private List<String> images;
     @Type(JsonType.class)
@@ -30,8 +34,8 @@ public class Item {
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
-    public String getSellerId() { return sellerId; }
-    public void setSellerId(String sellerId) { this.sellerId = sellerId; }
+    public Long getSellerId() { return sellerId; }
+    public void setSellerId(Long sellerId) { this.sellerId = sellerId; }
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }

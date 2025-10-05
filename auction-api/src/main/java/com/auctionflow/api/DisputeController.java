@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/disputes")
 @Tag(name = "Disputes", description = "Dispute management endpoints")
 @SecurityRequirement(name = "bearerAuth")
+@Profile("!ui-only")
 public class DisputeController {
 
     @Autowired

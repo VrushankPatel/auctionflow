@@ -18,7 +18,7 @@ public class ItemDTO {
 
     public ItemDTO(Item item) {
         this.id = item.getId();
-        this.sellerId = item.getSellerId();
+        this.sellerId = item.getSellerId().toString();
         this.title = item.getTitle();
         this.description = item.getDescription();
         this.categoryId = item.getCategoryId();

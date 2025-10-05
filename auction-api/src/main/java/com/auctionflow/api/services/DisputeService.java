@@ -8,6 +8,7 @@ import com.auctionflow.core.domain.events.DisputeCreatedEvent;
 import com.auctionflow.core.domain.events.DisputeResolvedEvent;
 import com.auctionflow.events.publisher.KafkaEventPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@Profile("!ui-only")
 public class DisputeService {
 
     @Autowired

@@ -1,21 +1,116 @@
+# Gradle
 build/
 **/build/
 .gradle/
+**/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDEs
 .idea/
 .vscode/
 *.iml
+*.iws
+*.ipr
+.settings/
+.project
+.classpath
+*.swp
+*.swo
+*~
+
+# Java
 *.class
+*.jar
+!gradle/wrapper/*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# Logs
 *.log
-.DS_Store
 /logs
+*.log.*
+gc.log*
+app.log
+nohup.out
+
+# OS
+.DS_Store
+Thumbs.db
+*.pid
+
+# Application Data
 /data
-*.jfr
-*.hprof
-.env
-*.p12
-*.jks
-node_modules/
-dist/
-application-local.yml
 /postgres-data
 /redis-data
+/kafka-data
+/uploads
+/backup
+
+# Memory dumps
+*.jfr
+*.hprof
+heapdump.hprof
+
+# Security
+.env
+.env.local
+.env.*.local
+*.p12
+*.jks
+*.key
+*.pem
+*.crt
+secrets/
+
+# Node.js / Frontend
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.cache/
+.parcel-cache/
+.npm
+.eslintcache
+*.tsbuildinfo
+
+# Backend Static Resources (generated)
+auction-api/src/main/resources/static/ui/
+
+# Test Coverage
+coverage/
+*.coverage
+.nyc_output/
+htmlcov/
+
+# Docker
+.dockerignore
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+.#*
+
+# Build artifacts
+target/
+**/target/
+out/
+bin/
+
+# Spring Boot
+application-local.yml
+application-local.properties
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Kubernetes
+*.kubeconfig

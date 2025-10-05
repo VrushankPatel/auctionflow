@@ -13,16 +13,19 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class SuspiciousActivityService {
 
-    private final RedisTemplate<String, String> redisTemplate;
+    @Autowired(required = false)
+    private RedisTemplate<String, String> redisTemplate;
     private final KafkaEventPublisher eventPublisher;
 
     @Autowired
-    public SuspiciousActivityService(RedisTemplate<String, String> redisTemplate, KafkaEventPublisher eventPublisher) {
-        this.redisTemplate = redisTemplate;
+    public SuspiciousActivityService(KafkaEventPublisher eventPublisher) {
         this.eventPublisher = eventPublisher;
     }
 
     public void checkForSuspiciousActivity(String userId, String ipAddress, String userAgent, String activityType) {
+        if (redisTemplate == null) {
+            return; // Skip if Redis not available
+        }
         // Example: Check for rapid bidding from same IP
         String key = "bids:" + ipAddress + ":" + userId;
         Long bidCount = redisTemplate.opsForValue().increment(key);
@@ -44,6 +47,9 @@ public class SuspiciousActivityService {
     }
 
     public void recordFailedLogin(String ipAddress) {
+        if (redisTemplate == null) {
+            return; // Skip if Redis not available
+        }
         String key = "failed_logins:" + ipAddress;
         redisTemplate.opsForValue().increment(key);
         redisTemplate.expire(key, 3600, TimeUnit.SECONDS); // Expire after 1 hour

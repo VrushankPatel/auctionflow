@@ -9,10 +9,12 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail(String email);
+    @Query("SELECT u FROM User u WHERE u.email = :email")
+    Optional<User> findByEmail(@Param("email") String email);
 
     @Modifying
     @Query("DELETE FROM User u WHERE u.deletedAt < :cutoff")

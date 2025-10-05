@@ -15,11 +15,11 @@ public class MobileService {
     public MobileAuctionsDTO convertToMobileAuctions(ActiveAuctionsDTO fullDto) {
         List<MobileAuctionDTO> mobileAuctions = fullDto.getAuctions().stream()
                 .map(auction -> new MobileAuctionDTO(
-                        auction.getAuctionId(),
+                        auction.getId(),
                         auction.getTitle(),
                         auction.getCurrentHighestBid(),
-                        auction.getEndTs(),
-                        null // imageUrl not available in summary
+                        auction.getEndTime(),
+                        auction.getImages() != null && !auction.getImages().isEmpty() ? auction.getImages().get(0) : null
                 ))
                 .collect(Collectors.toList());
         return new MobileAuctionsDTO(mobileAuctions, fullDto.getPage(), fullDto.getSize(), fullDto.getTotalElements(), fullDto.getTotalPages());

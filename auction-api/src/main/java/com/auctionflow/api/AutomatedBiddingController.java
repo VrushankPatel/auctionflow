@@ -34,7 +34,7 @@ public class AutomatedBiddingController {
             @RequestParam Double maxBid,
             @RequestBody Map<String, Object> parameters) {
 
-        AuctionId auction = new AuctionId(java.util.UUID.fromString(auctionId));
+        AuctionId auction = new AuctionId(auctionId);
         BidderId bidder = BidderId.fromString(bidderId);
         Money maxBidAmount = Money.usd(BigDecimal.valueOf(maxBid));
 

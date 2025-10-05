@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -17,6 +18,7 @@ import java.io.IOException;
 import java.util.Collections;
 
 @Component
+@Profile("!min & !ui-only")
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     private final ApiKeyService apiKeyService;
@@ -27,6 +29,23 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        // Skip API key check for public URLs
+        String requestURI = request.getRequestURI();
+        if (requestURI.startsWith("/ui/") ||
+            requestURI.startsWith("/static/") ||
+            requestURI.startsWith("/images/") ||
+            requestURI.startsWith("/ws") ||
+            requestURI.startsWith("/api/v1/auth/") ||
+            requestURI.startsWith("/api/v1/reference/") ||
+            requestURI.startsWith("/api/v1/users") ||
+            requestURI.startsWith("/api/v1/auctions") ||
+            requestURI.startsWith("/assets/") ||
+            requestURI.equals("/favicon.ico") ||
+            requestURI.equals("/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         try {
             String apiKey = getApiKeyFromRequest(request);
 

@@ -4,12 +4,12 @@ import java.util.Optional;
 
 public class ListActiveAuctionsQuery {
     private final Optional<String> category;
-    private final Optional<String> sellerId;
+    private final Optional<Long> sellerId;
     private final Optional<String> query;
     private final int page;
     private final int size;
 
-    public ListActiveAuctionsQuery(Optional<String> category, Optional<String> sellerId, Optional<String> query, int page, int size) {
+    public ListActiveAuctionsQuery(Optional<String> category, Optional<Long> sellerId, Optional<String> query, int page, int size) {
         this.category = category;
         this.sellerId = sellerId;
         this.query = query;
@@ -21,7 +21,7 @@ public class ListActiveAuctionsQuery {
         return category;
     }
 
-    public Optional<String> getSellerId() {
+    public Optional<Long> getSellerId() {
         return sellerId;
     }
 

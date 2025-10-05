@@ -7,6 +7,7 @@ import com.auctionflow.api.repositories.ArchivedAuctionRepository;
 import com.auctionflow.api.repositories.ArchivedBidRepository;
 import com.auctionflow.api.repositories.ArchivedEventRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +20,7 @@ import java.util.zip.GZIPInputStream;
 
 @RestController
 @RequestMapping("/api/v1/archive")
+@Profile("!ui-only")
 public class ArchiveController {
 
     @Autowired

@@ -1,168 +1,30 @@
+server:
+  port: 8080
+
 spring:
-  graphql:
-    graphiql:
-      enabled: true
-    websocket:
-      path: /graphql
-   datasource:
-     url: jdbc:postgresql://localhost:5432/${POSTGRES_DB}
-     username: ${POSTGRES_USER}
-     password: ${POSTGRES_PASSWORD}
-     hikari:
-       maximum-pool-size: 50
-       minimum-idle: 10
-       connection-timeout: 20000
-       idle-timeout: 300000
-       max-lifetime: 1200000
-       leak-detection-threshold: 60000
+  datasource:
+    url: "jdbc:h2:mem:testdb"
+    username: sa
+    password:
   jpa:
     hibernate:
-      ddl-auto: validate
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        jdbc:
-          batch_size: 25
-        order_inserts: true
-        order_updates: true
-   flyway:
-     enabled: true
-   task:
-     execution:
-       pool:
-         core-size: 20
-         max-size: 50
-         queue-capacity: 1000
-         thread-name-prefix: auction-async-
-     scheduling:
-       pool:
-         size: 5
-         thread-name-prefix: auction-sched-
-   redis:
-     lettuce:
-       pool:
-         max-active: 20
-         max-idle: 10
-         min-idle: 5
-         max-wait: -1ms
-   security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
-            redirect-uri: http://localhost:8080/login/oauth2/code/google
-            scope:
-              - openid
-              - email
-              - profile
-          facebook:
-            client-id: ${FACEBOOK_CLIENT_ID}
-            client-secret: ${FACEBOOK_CLIENT_SECRET}
-            redirect-uri: http://localhost:8080/login/oauth2/code/facebook
-            scope:
-              - email
-              - public_profile
+      ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.SnakeCasePhysicalNamingStrategy
+  flyway:
+    enabled: false
+  web:
+    resources:
+      static-locations: classpath:/static/
+  cache:
+    type: none
+  redis:
+    host: localhost
+    port: 6379
 
+# JWT Configuration
 jwt:
-  secret: mySecretKeyForJWTWhichShouldBeAtLeast256BitsLong
-  expiration: 86400000  # 24 hours
-  refreshExpiration: 604800000  # 7 days
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,prometheus
-  endpoint:
-    health:
-      probes:
-        enabled: true
-      show-details: when_authorized
-  health:
-    readiness-state:
-      enabled: true
-    liveness-state:
-      enabled: true
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-
- otel:
-   service:
-     name: auction-api
-   traces:
-     exporter: jaeger
-     sampler: parentbased_always_on
-     sampler.arg: 0.1
-   exporter:
-     jaeger:
-       endpoint: http://localhost:14268/api/traces
-
-  gdpr:
-    retention:
-      softDeleteDays: 30
-    consents:
-      types:
-        - general
-        - dataProcessing
-
-unleash:
-  app-name: auction-flow
-  instance-id: ${HOSTNAME:default}
-  api-url: ${UNLEASH_API_URL:http://localhost:4242/api}
-  api-token: ${UNLEASH_API_TOKEN:}
-
- auction:
-   async:
-     core-pool-size: 20
-     max-pool-size: 50
-     queue-capacity: 1000
-     thread-name-prefix: auction-async-
-   bidding:
-     thread-pool-size: 10
-     queue-capacity: 500
-   timer:
-     thread-pool-size: 5
-
- resilience4j:
-   ratelimiter:
-     configs:
-       default:
-         limitForPeriod: 10
-         limitRefreshPeriod: 1s
-         timeoutDuration: 0s
-     instances:
-       perUser:
-         limitForPeriod: 5
-         limitRefreshPeriod: 1s
-       perIp:
-         limitForPeriod: 100
-         limitRefreshPeriod: 1s
-       perAuction:
-         limitForPeriod: 100
-         limitRefreshPeriod: 1s
-   circuitbreaker:
-    configs:
-      default:
-        registerHealthIndicator: true
-        slidingWindowSize: 10
-        minimumNumberOfCalls: 5
-        permittedNumberOfCallsInHalfOpenState: 3
-        automaticTransitionFromOpenToHalfOpenEnabled: true
-        waitDurationInOpenState: 60s
-        failureRateThreshold: 50
-        eventConsumerBufferSize: 10
-        recordExceptions:
-          - org.springframework.web.client.RestClientException
-          - java.io.IOException
-          - java.util.concurrent.TimeoutException
-        ignoreExceptions:
-          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
-    instances:
-      webhookService:
-        baseConfig: default
-        waitDurationInOpenState: 30s
-        failureRateThreshold: 60
+  secret: supersecretjwtkeythatislongenough
+  expiration: 86400000
+  refresh:
+    expiration: 604800000

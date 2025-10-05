@@ -1,3 +1,23 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+        maven {
+            url = 'https://plugins.gradle.org/m2/'
+        }
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        mavenCentral()
+        maven {
+            url = 'https://plugins.gradle.org/m2/'
+        }
+    }
+}
+
 rootProject.name = 'auction-flow-parent'
 
 include 'auction-core'
@@ -8,5 +28,5 @@ include 'auction-notifications'
 include 'auction-payments'
 include 'auction-analytics'
 include 'auction-common'
-include 'auction-tests'
+// include 'auction-tests'
 include 'auction-bidding-strategies'

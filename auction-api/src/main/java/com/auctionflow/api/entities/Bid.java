@@ -18,7 +18,9 @@ public class Bid {
     private Instant serverTs;
     private Long seqNo;
     private Boolean accepted;
+    @Column(name = "deleted_at")
     private Instant deletedAt;
+    @Column(name = "deleted_by")
     private Long deletedBy;
 
     // getters and setters

@@ -1,0 +1,43 @@
+spring:
+  datasource:
+    url: "${SPRING_DATASOURCE_URL:jdbc:h2:mem:testdb}"
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create
+      naming:
+        implicit-strategy: org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy
+        physical-strategy: org.hibernate.boot.model.naming.SnakeCasePhysicalNamingStrategy
+      database-platform: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+  redis:
+    host: ${SPRING_REDIS_HOST:localhost}
+    port: ${SPRING_REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka-1:29092}
+  redisson:
+    host: redis-1
+    port: 6379
+  web:
+    resources:
+      static-locations: classpath:/static/, file:/app/static/
+    mvc:
+      static-path-pattern: /**
+
+jwt:
+  secret: ${JWT_SECRET:supersecretjwtkeythatislongenough}
+  expiration: ${JWT_EXPIRATION:86400000}
+  refresh:
+    expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+unleash:
+  enabled: false
+
+logging:
+  level:
+    org.springframework: DEBUG

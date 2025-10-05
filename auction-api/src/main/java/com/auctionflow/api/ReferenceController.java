@@ -17,11 +17,22 @@ public class ReferenceController {
     @GetMapping("/categories")
     public ResponseEntity<List<Map<String, Object>>> getCategories() {
         // Placeholder categories
-        List<Map<String, Object>> categories = Arrays.asList(
-            Map.of("id", "electronics", "name", "Electronics", "parent", (Object) null),
-            Map.of("id", "phones", "name", "Phones", "parent", "electronics"),
-            Map.of("id", "art", "name", "Art", "parent", (Object) null)
-        );
+        Map<String, Object> electronics = new HashMap<>();
+        electronics.put("id", "electronics");
+        electronics.put("name", "Electronics");
+        electronics.put("parent", null);
+
+        Map<String, Object> phones = new HashMap<>();
+        phones.put("id", "phones");
+        phones.put("name", "Phones");
+        phones.put("parent", "electronics");
+
+        Map<String, Object> art = new HashMap<>();
+        art.put("id", "art");
+        art.put("name", "Art");
+        art.put("parent", null);
+
+        List<Map<String, Object>> categories = Arrays.asList(electronics, phones, art);
         return ResponseEntity.ok(categories);
     }
 

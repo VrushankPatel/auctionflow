@@ -32,7 +32,7 @@ public class ProxyBidService {
     }
 
     @Transactional
-    public ProxyBid setProxyBid(UUID userId, AuctionId auctionId, Money maxBid, StrategyType strategyType, StrategyParameters params) {
+    public ProxyBid setProxyBid(Long userId, AuctionId auctionId, Money maxBid, StrategyType strategyType, StrategyParameters params) {
         String auctionIdStr = auctionId.value().toString();
 
         // Check if user already has a proxy bid for this auction
@@ -65,7 +65,7 @@ public class ProxyBidService {
         }
     }
 
-    public Optional<ProxyBid> getProxyBid(UUID userId, AuctionId auctionId) {
+    public Optional<ProxyBid> getProxyBid(Long userId, AuctionId auctionId) {
         return proxyBidRepository.findByAuctionIdAndUserId(auctionId.value().toString(), userId);
     }
 

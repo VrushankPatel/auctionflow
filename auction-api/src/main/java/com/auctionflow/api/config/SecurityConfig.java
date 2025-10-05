@@ -3,6 +3,7 @@ package com.auctionflow.api.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.access.AccessDecisionManager;
@@ -27,31 +28,32 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 
 @Configuration
+@Profile("!ui-only && !min")
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    @Autowired
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
+    private final RateLimitFilter rateLimitFilter;
+    private final AuctionVoter auctionVoter;
 
-    @Autowired
-    private ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
-
-    @Autowired
-    private RateLimitFilter rateLimitFilter;
-
-    @Autowired
-    private AuctionVoter auctionVoter;
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                         ApiKeyAuthenticationFilter apiKeyAuthenticationFilter,
+                         RateLimitFilter rateLimitFilter,
+                         AuctionVoter auctionVoter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.apiKeyAuthenticationFilter = apiKeyAuthenticationFilter;
+        this.rateLimitFilter = rateLimitFilter;
+        this.auctionVoter = auctionVoter;
+    }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new Argon2PasswordEncoder(16, 32, 1, 65536, 3);
-    }
+
 
     @Bean
     public AccessDecisionManager accessDecisionManager() {
@@ -71,13 +73,29 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/api/v1/auth/**", "/oauth2/**", "/login/**").permitAll()
-                .anyRequest().authenticated()
+                   .requestMatchers(
+                       "/api/v1/auth/**",
+                       "/api/v1/reference/**",
+                       "/api/v1/users",
+                       "/api/v1/auctions",
+                       "/api/v1/auctions/**",
+                       "/oauth2/**",
+                       "/login/**",
+                       "/actuator/**",
+                       "/ws/**",
+                       "/",
+                        "/ui/**",
+                        "/assets/**",
+                        "/static/**",
+                        "/images/**",
+                        "/favicon.ico"
+                   ).permitAll()
+                 .anyRequest().authenticated()
             )
-            .oauth2Login(oauth2 -> oauth2
-                .defaultSuccessUrl("/api/v1/auth/oauth2/success")
-                .failureUrl("/api/v1/auth/oauth2/failure")
-            )
+             // .oauth2Login(oauth2 -> oauth2
+             //     .defaultSuccessUrl("/api/v1/auth/oauth2/success")
+             //     .failureUrl("/api/v1/auth/oauth2/failure")
+             // )
             .headers(headers -> headers
                 .frameOptions().deny()
                 .contentTypeOptions().and()
@@ -85,7 +103,7 @@ public class SecurityConfig {
                     .maxAgeInSeconds(31536000))
                 .referrerPolicy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
             )
-             .addFilterBefore(rateLimitFilter, ApiKeyAuthenticationFilter.class)
+             .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
              .addFilterBefore(apiKeyAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
              .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

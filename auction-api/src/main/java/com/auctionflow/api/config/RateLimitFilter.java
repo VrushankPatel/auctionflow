@@ -3,7 +3,9 @@ package com.auctionflow.api.config;
 import com.auctionflow.events.publisher.KafkaEventPublisher;
 import com.auctionflow.core.domain.events.RateLimitExceededEvent;
 import io.github.resilience4j.ratelimiter.RateLimiter;
+import io.github.resilience4j.ratelimiter.RateLimiterConfig;
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
+import java.time.Duration;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,8 +35,25 @@ public class RateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
+        String requestURI = request.getRequestURI();
+        // Skip rate limiting for static resources and public endpoints
+        if (requestURI.startsWith("/ui/") ||
+            requestURI.startsWith("/static/") ||
+            requestURI.startsWith("/images/") ||
+            requestURI.startsWith("/ws") ||
+            requestURI.startsWith("/api/v1/auth/") ||
+            requestURI.startsWith("/api/v1/reference/") ||
+            requestURI.startsWith("/api/v1/users") ||
+            requestURI.startsWith("/api/v1/auctions") ||
+            requestURI.startsWith("/assets/") ||
+            requestURI.equals("/favicon.ico") ||
+            requestURI.equals("/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String ipAddress = getClientIpAddress(request);
-        String endpoint = request.getRequestURI();
+        String endpoint = requestURI;
 
         // Create or get rate limiter for this IP
         RateLimiter rateLimiter = ipRateLimiters.computeIfAbsent(ipAddress, this::createRateLimiterForIp);
@@ -50,7 +69,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private RateLimiter createRateLimiterForIp(String ip) {
-        return RateLimiter.of(ip, rateLimiterRegistry.getConfiguration("ipRateLimiter").orElseThrow());
+        RateLimiterConfig defaultConfig = RateLimiterConfig.custom()
+                .limitForPeriod(20)
+                .limitRefreshPeriod(Duration.ofSeconds(1))
+                .timeoutDuration(Duration.ofMillis(100))
+                .build();
+        return RateLimiter.of(ip, rateLimiterRegistry.getConfiguration("ipRateLimiter").orElse(defaultConfig));
     }
 
     private void publishRateLimitEvent(HttpServletRequest request, String ipAddress, String endpoint) {

@@ -2,23 +2,23 @@ package com.auctionflow.core.domain.valueobjects;
 
 import java.util.UUID;
 
-public record BidderId(UUID id) {
+public record BidderId(String id) {
     public BidderId {
-        if (id == null) {
-            throw new IllegalArgumentException("BidderId cannot be null");
+        if (id == null || id.isBlank()) {
+            throw new IllegalArgumentException("BidderId cannot be null or blank");
         }
     }
 
     public static BidderId generate() {
-        return new BidderId(UUID.randomUUID());
+        return new BidderId(UUID.randomUUID().toString());
     }
 
     public static BidderId fromString(String id) {
-        return new BidderId(UUID.fromString(id));
+        return new BidderId(id);
     }
 
     @Override
     public String toString() {
-        return id.toString();
+        return id;
     }
 }

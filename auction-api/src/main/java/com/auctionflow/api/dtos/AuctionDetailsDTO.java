@@ -6,7 +6,7 @@ import java.time.Instant;
 public class AuctionDetailsDTO {
     private String auctionId;
     private String itemId;
-    private String sellerId;
+    private Long sellerId;
     private String title;
     private String description;
     private String status;
@@ -19,7 +19,7 @@ public class AuctionDetailsDTO {
     private String highestBidderId;
     private Instant lastBidTs;
 
-    public AuctionDetailsDTO(String auctionId, String itemId, String sellerId, String title, String description, String status, Instant startTs, Instant endTs, BigDecimal reservePrice, BigDecimal buyNowPrice, boolean hiddenReserve, BigDecimal currentHighestBid, String highestBidderId, Instant lastBidTs) {
+    public AuctionDetailsDTO(String auctionId, String itemId, Long sellerId, String title, String description, String status, Instant startTs, Instant endTs, BigDecimal reservePrice, BigDecimal buyNowPrice, boolean hiddenReserve, BigDecimal currentHighestBid, String highestBidderId, Instant lastBidTs) {
         this.auctionId = auctionId;
         this.itemId = itemId;
         this.sellerId = sellerId;
@@ -43,8 +43,8 @@ public class AuctionDetailsDTO {
     public String getItemId() { return itemId; }
     public void setItemId(String itemId) { this.itemId = itemId; }
 
-    public String getSellerId() { return sellerId; }
-    public void setSellerId(String sellerId) { this.sellerId = sellerId; }
+    public Long getSellerId() { return sellerId; }
+    public void setSellerId(Long sellerId) { this.sellerId = sellerId; }
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }

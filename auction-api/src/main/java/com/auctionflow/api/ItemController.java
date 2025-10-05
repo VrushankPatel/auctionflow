@@ -2,8 +2,10 @@ package com.auctionflow.api;
 
 import com.auctionflow.api.dtos.ItemDTO;
 import com.auctionflow.api.entities.Item;
+import com.auctionflow.api.entities.User;
 import com.auctionflow.api.repositories.ItemRepository;
 import com.auctionflow.api.services.ItemValidationService;
+import com.auctionflow.api.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,18 +28,22 @@ public class ItemController {
     @Autowired
     private ItemValidationService itemValidationService;
 
+    @Autowired
+    private UserService userService;
+
     @PostMapping
     @PreAuthorize("hasRole('SELLER')")
     public ResponseEntity<ItemDTO> createItem(@Valid @RequestBody CreateItemRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        // Assume UserService to get user by email
-        // For simplicity, assume sellerId is email or something, but need UserService
-        // Placeholder: get sellerId from auth
-        UUID sellerId = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User user = userService.getUserByEmail(email);
+        if (user == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        Long sellerId = user.getId();
 
         Item item = new Item();
         item.setId(UUID.randomUUID().toString());
-        item.setSellerId(sellerId.toString());
+        item.setSellerId(sellerId);
         item.setTitle(request.getTitle());
         item.setDescription(request.getDescription());
         item.setCategoryId(request.getCategoryId());
@@ -68,7 +74,7 @@ public class ItemController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ItemDTO>> listItems(@RequestParam Optional<String> sellerId) {
+    public ResponseEntity<List<ItemDTO>> listItems(@RequestParam Optional<Long> sellerId) {
         List<Item> items;
         if (sellerId.isPresent()) {
             items = itemRepository.findBySellerId(sellerId.get());

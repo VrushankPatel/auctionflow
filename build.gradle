@@ -4,13 +4,41 @@ plugins {
     id 'org.owasp.dependencycheck' version '8.4.0'
 }
 
+task buildUi(type: Exec) {
+    workingDir 'auctionflow-ui'
+    commandLine 'npm', 'install'
+}
+
+task buildUiDist(type: Exec) {
+    dependsOn buildUi
+    workingDir 'auctionflow-ui'
+    commandLine 'npm', 'run', 'build'
+}
+
+task copyUiAssets(type: Copy) {
+    dependsOn buildUiDist
+    from('auctionflow-ui/client/dist') {
+        include 'assets/**'
+    }
+    into 'auction-api/src/main/resources/static/ui'
+    doFirst {
+        delete fileTree('auction-api/src/main/resources/static/ui/assets')
+    }
+}
+
+task copyUiIndex(type: Copy) {
+    dependsOn buildUiDist
+    from('auctionflow-ui/client/dist') {
+        include 'index.html'
+    }
+    into 'auction-api/src/main/resources/static/ui'
+}
+
+build.dependsOn copyUiAssets, copyUiIndex
+
 allprojects {
     group = 'com.auctionflow'
     version = '1.0.0-SNAPSHOT'
-
-    repositories {
-        mavenCentral()
-    }
 }
 
 subprojects {

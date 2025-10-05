@@ -11,7 +11,7 @@ public class ProhibitedCategory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "category_id", nullable = false, unique = true)
     private String categoryId;
 
     private String reason;
@@ -19,7 +19,7 @@ public class ProhibitedCategory {
     @Column(nullable = false)
     private boolean active = true;
 
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     // getters and setters

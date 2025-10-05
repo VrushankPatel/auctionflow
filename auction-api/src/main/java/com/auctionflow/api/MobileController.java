@@ -49,7 +49,7 @@ public class MobileController {
     })
     public ResponseEntity<MobileAuctionsDTO> listMobileAuctions(
             @RequestParam Optional<String> category,
-            @RequestParam Optional<String> sellerId,
+            @RequestParam Optional<Long> sellerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         ListActiveAuctionsQuery query = new ListActiveAuctionsQuery(category, sellerId, Optional.empty(), page, size);

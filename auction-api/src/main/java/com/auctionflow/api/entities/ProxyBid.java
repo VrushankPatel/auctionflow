@@ -16,7 +16,7 @@ public class ProxyBid {
     private String auctionId;
 
     @Column(name = "user_id", nullable = false)
-    private java.util.UUID userId;
+    private Long userId;
 
     @Column(name = "max_bid", nullable = false, precision = 10, scale = 2)
     private BigDecimal maxBid;
@@ -56,11 +56,11 @@ public class ProxyBid {
         this.auctionId = auctionId;
     }
 
-    public java.util.UUID getUserId() {
+    public Long getUserId() {
         return userId;
     }
 
-    public void setUserId(java.util.UUID userId) {
+    public void setUserId(Long userId) {
         this.userId = userId;
     }
 

@@ -11,17 +11,26 @@ import java.time.Instant;
 public class Auction {
     @Id
     private String id;
+    @Column(name = "item_id")
     private String itemId;
-    private String sellerId;
+    private Long sellerId;
     private String status;
+    @Column(name = "start_ts")
     private Instant startTs;
+    @Column(name = "end_ts")
     private Instant endTs;
     private String encryptedReservePrice;
+    @Column(name = "buy_now_price")
     private BigDecimal buyNowPrice;
+    @Column(name = "hidden_reserve")
     private boolean hiddenReserve;
+    @Column(name = "current_highest_bid")
     private BigDecimal currentHighestBid;
-    private String currentHighestBidder;
+    @Column(name = "current_highest_bidder")
+    private Long currentHighestBidder;
+    @Column(name = "deleted_at")
     private Instant deletedAt;
+    @Column(name = "deleted_by")
     private Long deletedBy;
 
     // getters and setters
@@ -31,8 +40,8 @@ public class Auction {
     public String getItemId() { return itemId; }
     public void setItemId(String itemId) { this.itemId = itemId; }
 
-    public String getSellerId() { return sellerId; }
-    public void setSellerId(String sellerId) { this.sellerId = sellerId; }
+    public Long getSellerId() { return sellerId; }
+    public void setSellerId(Long sellerId) { this.sellerId = sellerId; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
@@ -55,8 +64,8 @@ public class Auction {
     public BigDecimal getCurrentHighestBid() { return currentHighestBid; }
     public void setCurrentHighestBid(BigDecimal currentHighestBid) { this.currentHighestBid = currentHighestBid; }
 
-    public String getCurrentHighestBidder() { return currentHighestBidder; }
-    public void setCurrentHighestBidder(String currentHighestBidder) { this.currentHighestBidder = currentHighestBidder; }
+    public Long getCurrentHighestBidder() { return currentHighestBidder; }
+    public void setCurrentHighestBidder(Long currentHighestBidder) { this.currentHighestBidder = currentHighestBidder; }
 
     public Instant getDeletedAt() { return deletedAt; }
     public void setDeletedAt(Instant deletedAt) { this.deletedAt = deletedAt; }

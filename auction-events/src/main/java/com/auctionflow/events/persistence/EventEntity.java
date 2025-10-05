@@ -7,7 +7,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
 @Entity
-@Table(name = "event_store", uniqueConstraints = @UniqueConstraint(columnNames = {"aggregate_id", "sequence_number"}))
+@Table(name = "event_store", uniqueConstraints = @UniqueConstraint(columnNames = {"aggregate_id", "sequence_number", "timestamp"}))
 public class EventEntity {
 
     @Id

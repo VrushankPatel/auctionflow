@@ -20,7 +20,7 @@ public class JwtTokenProvider {
     @Value("${jwt.expiration}")
     private int jwtExpirationInMs;
 
-    @Value("${jwt.refreshExpiration}")
+    @Value("${jwt.refresh.expiration}")
     private int jwtRefreshExpirationInMs;
 
     private SecretKey getSigningKey() {

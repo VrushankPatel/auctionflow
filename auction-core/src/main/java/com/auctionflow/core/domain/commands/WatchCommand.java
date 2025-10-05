@@ -2,15 +2,13 @@ package com.auctionflow.core.domain.commands;
 
 import com.auctionflow.core.domain.valueobjects.AuctionId;
 
-import java.util.UUID;
-
-public record WatchCommand(AuctionId auctionId, UUID userId) {
+public record WatchCommand(AuctionId auctionId, String userId) {
     public WatchCommand {
         if (auctionId == null) {
             throw new IllegalArgumentException("AuctionId cannot be null");
         }
-        if (userId == null) {
-            throw new IllegalArgumentException("UserId cannot be null");
+        if (userId == null || userId.isBlank()) {
+            throw new IllegalArgumentException("UserId cannot be null or blank");
         }
     }
 }

@@ -1,20 +1,18 @@
 package com.auctionflow.core.domain.valueobjects;
 
-import java.util.UUID;
-
-public record WinnerId(UUID value) {
+public record WinnerId(String value) {
     public WinnerId {
-        if (value == null) {
-            throw new IllegalArgumentException("WinnerId cannot be null");
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("WinnerId cannot be null or blank");
         }
     }
 
     public static WinnerId fromString(String value) {
-        return new WinnerId(UUID.fromString(value));
+        return new WinnerId(value);
     }
 
     @Override
     public String toString() {
-        return value.toString();
+        return value;
     }
 }

@@ -3,6 +3,7 @@ package com.auctionflow.api.services;
 import com.auctionflow.api.entities.ApiKey;
 import com.auctionflow.api.repositories.ApiKeyRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -16,12 +17,13 @@ import java.util.Base64;
 import java.util.Optional;
 
 @Service
+@Profile("!min & !ui-only")
 public class ApiKeyService {
 
     @Autowired
     private ApiKeyRepository apiKeyRepository;
 
-    @Autowired
+    @Autowired(required = false)
     private RedisTemplate<String, String> redisTemplate;
 
     private static final String ALGORITHM = "SHA-256";
@@ -70,6 +72,9 @@ public class ApiKeyService {
     }
 
     private boolean isRateLimitExceeded(String hashedKey) {
+        if (redisTemplate == null) {
+            return false; // No rate limiting if Redis is not available
+        }
         String redisKey = "rate_limit:" + hashedKey;
         Long currentCount = redisTemplate.opsForValue().increment(redisKey);
         if (currentCount == 1) {

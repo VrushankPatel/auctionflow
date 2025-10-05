@@ -1,0 +1,37 @@
+server:
+  port: 8080
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+  data:
+    jpa:
+      repositories:
+        enabled: false
+  graphql:
+    graphiql:
+      enabled: true
+    websocket:
+      path: /graphql
+  redis:
+    host: redis-1
+    password: redis_password_here
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  health:
+    redis:
+      enabled: false
+
+# Static UI is served via WebMvcConfig at /ui/** from classpath:/static/ui/
+jwt:
+  secret: dev-secret
+  expiration: 86400000
+  refreshExpiration: 604800000
+

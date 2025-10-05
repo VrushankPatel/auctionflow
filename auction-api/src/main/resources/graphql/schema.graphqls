@@ -39,13 +39,13 @@ type Auction {
 }
 
 type Bid {
-  id: ID!
-  auction: Auction!
-  bidder: User!
-  amount: Money!
-  serverTimestamp: DateTime!
-  sequenceNumber: Long!
-  accepted: Boolean!
+   id: ID!
+   auction: Auction!
+   bidder: User!
+   amount: Money!
+   serverTimestamp: DateTime!
+   sequenceNumber: Int!
+   accepted: Boolean!
 }
 
 type User {

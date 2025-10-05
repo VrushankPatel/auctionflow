@@ -141,22 +141,4 @@ public class OfferAggregate extends AggregateRoot {
             apply((OfferRejectedEvent) event);
         }
     }
-
-    private void apply(OfferCreatedEvent event) {
-        this.id = (OfferId) event.getAggregateId();
-        this.auctionId = event.getAuctionId();
-        this.buyerId = event.getBuyerId();
-        this.sellerId = event.getSellerId();
-        this.amount = event.getAmount();
-        this.createdAt = event.getTimestamp();
-        this.status = OfferStatus.PENDING;
-    }
-
-    private void apply(OfferAcceptedEvent event) {
-        this.status = OfferStatus.ACCEPTED;
-    }
-
-    private void apply(OfferRejectedEvent event) {
-        this.status = OfferStatus.REJECTED;
-    }
 }

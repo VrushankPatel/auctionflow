@@ -46,7 +46,7 @@ public class AuctionAggregate extends AggregateRoot {
     private List<Bid> revealedBids;
     private WinnerId winnerId;
     private Money currentHighestBid;
-    private UUID highestBidderId;
+    private String highestBidderId;
     private BidIncrement bidIncrement;
     private long currentSeqNo;
     private final BidQueue bidQueue = new BidQueue();

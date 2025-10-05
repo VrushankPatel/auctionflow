@@ -6,7 +6,10 @@ import com.auctionflow.api.services.UserService;
 import com.auctionflow.events.publisher.KafkaEventPublisher;
 import com.auctionflow.core.domain.events.FailedLoginEvent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
+
+import java.util.Optional;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,10 +24,11 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
+@Profile("!ui-only")
 public class AuthController {
 
     @Autowired
-    private AuthenticationManager authenticationManager;
+    private Optional<AuthenticationManager> authenticationManager;
 
     @Autowired
     private JwtTokenProvider tokenProvider;
@@ -54,10 +58,16 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
+        if (!authenticationManager.isPresent()) {
+            return ResponseEntity.status(503).body(Map.of("error", "SERVICE_UNAVAILABLE", "message", "Authentication service not available"));
+        }
         try {
-            Authentication authentication = authenticationManager.authenticate(
+            // Support both email and username fields
+            String username = loginRequest.getEmail() != null ? loginRequest.getEmail() : loginRequest.getUsername();
+            
+            Authentication authentication = authenticationManager.get().authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            loginRequest.getUsername(),
+                            username,
                             loginRequest.getPassword()
                     )
             );
@@ -66,28 +76,44 @@ public class AuthController {
             String jwt = tokenProvider.generateToken(authentication);
             String refreshToken = tokenProvider.generateRefreshToken(authentication);
 
-            Map<String, String> response = new HashMap<>();
-            response.put("accessToken", jwt);
+            // Get user details
+            User user = userService.getUserByEmail(username);
+            if (user == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "USER_NOT_FOUND", "message", "User not found"));
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("token", jwt); // Frontend expects "token" not "accessToken"
+            response.put("accessToken", jwt); // Keep for backward compatibility
             response.put("refreshToken", refreshToken);
+            
+            // Add user object
+            Map<String, Object> userMap = new HashMap<>();
+            userMap.put("id", user.getId().toString());
+            userMap.put("email", user.getEmail());
+            userMap.put("displayName", user.getDisplayName());
+            userMap.put("role", user.getRole().name());
+            response.put("user", userMap);
 
             return ResponseEntity.ok(response);
         } catch (BadCredentialsException e) {
             // Publish failed login event
             String ipAddress = getClientIpAddress(request);
             String userAgent = request.getHeader("User-Agent");
+            String username = loginRequest.getEmail() != null ? loginRequest.getEmail() : loginRequest.getUsername();
             FailedLoginEvent failedEvent = new FailedLoginEvent(
                 java.util.UUID.randomUUID(),
                 java.time.Instant.now(),
                 ipAddress,
                 userAgent,
-                loginRequest.getUsername(),
+                username,
                 "Invalid credentials",
                 java.util.Map.of("attemptCount", 1) // Could track in Redis
             );
             eventPublisher.publishSecurityEvent(failedEvent);
             // suspiciousActivityService.recordFailedLogin(ipAddress);
 
-            return ResponseEntity.badRequest().body("Invalid username or password");
+            return ResponseEntity.status(401).body(Map.of("error", "INVALID_CREDENTIALS", "message", "Invalid email or password"));
         }
     }
 
@@ -137,11 +163,14 @@ public class AuthController {
 
     public static class LoginRequest {
         private String username;
+        private String email; // Support email field for frontend compatibility
         private String password;
 
         // getters and setters
         public String getUsername() { return username; }
         public void setUsername(String username) { this.username = username; }
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
         public String getPassword() { return password; }
         public void setPassword(String password) { this.password = password; }
     }

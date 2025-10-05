@@ -1,0 +1,29 @@
+# Disable Unleash in ui-only mode
+unleash:
+  enabled: false
+
+# Enable only basic health check in ui-only mode
+management:
+  health:
+    defaults:
+      enabled: false
+    ping:
+      enabled: true
+
+# Disable cache, JPA, and DataSource in ui-only mode
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+  cache:
+    type: none
+
+# JWT Configuration for ui-only
+jwt:
+  secret: ${JWT_SECRET:supersecretjwtkeythatislongenough}
+  expiration: ${JWT_EXPIRATION:86400000}
+  refresh:
+    expiration: ${JWT_REFRESH_EXPIRATION:604800000}

@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public class CloseAuctionHandler implements CommandHandler<CloseAuctionCommand> {
+public class CloseAuctionHandler {
 
     private final EventStore eventStore;
     private final KafkaTemplate<String, DomainEvent> kafkaTemplate;
@@ -32,7 +32,6 @@ public class CloseAuctionHandler implements CommandHandler<CloseAuctionCommand> 
         this.redissonClient = redissonClient;
     }
 
-    @Override
     @Async
     @EventListener
     public void handle(CloseAuctionCommand command) {

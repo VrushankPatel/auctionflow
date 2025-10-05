@@ -1,17 +1,32 @@
 plugins {
     id 'org.springframework.boot' version '3.2.0'
-    id 'org.flywaydb.flyway' version '10.0.1'
+    id 'io.spring.dependency-management' version '1.1.4'
+}
+
+
+
+build.dependsOn rootProject.copyUiAssets, rootProject.copyUiIndex
+processResources.dependsOn rootProject.copyUiAssets, rootProject.copyUiIndex
+
+bootRun {
+    dependsOn build
 }
 
 dependencies {
      implementation 'org.springframework.boot:spring-boot-starter-web'
-     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-     implementation 'org.springframework.boot:spring-boot-starter-validation'
-     implementation 'org.flywaydb:flyway-core'
+     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+      implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+      implementation 'org.springframework.boot:spring-boot-starter-validation'
+      implementation 'org.flywaydb:flyway-core'
      implementation 'com.vladmihalcea:hibernate-types-60:2.21.1'
+
+      implementation 'org.springframework.boot:spring-boot-starter-cache'
+     implementation 'com.github.ben-manes.caffeine:caffeine'
      implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    implementation 'org.springframework.boot:spring-boot-starter-cache'
-    implementation 'com.github.ben-manes.caffeine:caffeine'
+     implementation 'org.springframework.kafka:spring-kafka'
+
+       runtimeOnly 'org.postgresql:postgresql'
+       runtimeOnly 'com.h2database:h2'
     implementation 'org.springframework.boot:spring-boot-starter-hateoas'
      implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
      implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
@@ -20,9 +35,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'io.micrometer:micrometer-registry-prometheus'
-    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
-    implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
-    implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+      implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+      implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
+      implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+      implementation 'org.bouncycastle:bcprov-jdk18on:1.77'
+      implementation 'org.bouncycastle:bcpkix-jdk18on:1.77'
       implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.0.2'
       implementation 'io.github.resilience4j:resilience4j-ratelimiter:2.0.2'
       implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.0.2'
@@ -35,9 +52,11 @@ dependencies {
      implementation 'io.opentelemetry:opentelemetry-extension-annotations'
        // implementation 'io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter'
      implementation 'net.logstash.logback:logstash-logback-encoder:7.3'
-      implementation project(':auction-core')
-     implementation project(':auction-common')
-       implementation project(':auction-events')
+       implementation project(':auction-core')
+       implementation (project(':auction-common')) {
+           exclude group: 'org.redisson', module: 'redisson-spring-boot-starter'
+       }
+        implementation project(':auction-events')
        implementation project(':auction-bidding-strategies')
        implementation 'org.springframework.graphql:spring-graphql'
       implementation 'com.graphql-java:graphql-java-extended-scalars:21.0'

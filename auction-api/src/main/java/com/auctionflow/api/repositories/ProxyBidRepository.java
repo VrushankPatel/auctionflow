@@ -10,12 +10,11 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
 public interface ProxyBidRepository extends JpaRepository<ProxyBid, Long> {
 
-    Optional<ProxyBid> findByAuctionIdAndUserId(String auctionId, UUID userId);
+    Optional<ProxyBid> findByAuctionIdAndUserId(String auctionId, Long userId);
 
     List<ProxyBid> findByAuctionIdAndStatus(String auctionId, String status);
 

@@ -10,6 +10,7 @@ import org.redisson.config.Config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
@@ -21,10 +22,11 @@ import java.util.Map;
 
 @Configuration
 @EnableAsync
+@Profile("!ui-only")
 public class EventConfig {
 
     @Bean
-    public ProducerFactory<String, DomainEvent> producerFactory(@Value("${kafka.bootstrap-servers:localhost:9092}") String bootstrapServers) {
+    public ProducerFactory<String, DomainEvent> producerFactory(@Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers) {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -43,7 +45,7 @@ public class EventConfig {
     }
 
     @Bean
-    public ProducerFactory<String, SecurityEvent> securityProducerFactory(@Value("${kafka.bootstrap-servers:localhost:9092}") String bootstrapServers) {
+    public ProducerFactory<String, SecurityEvent> securityProducerFactory(@Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers) {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -62,8 +64,8 @@ public class EventConfig {
     }
 
     @Bean
-    public RedissonClient redissonClient(@Value("${redis.host:localhost}") String redisHost,
-                                         @Value("${redis.port:6379}") int redisPort) {
+    public RedissonClient redissonClient(@Value("${spring.redis.host:localhost}") String redisHost,
+                                        @Value("${spring.redis.port:6379}") int redisPort) {
         Config config = new Config();
         config.useSingleServer().setAddress("redis://" + redisHost + ":" + redisPort);
         return Redisson.create(config);

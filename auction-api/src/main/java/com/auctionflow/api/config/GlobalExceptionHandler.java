@@ -2,6 +2,7 @@ package com.auctionflow.api.config;
 
 import com.auctionflow.common.dtos.ErrorResponse;
 import com.auctionflow.common.exceptions.*;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -10,11 +11,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.Instant;
 import java.util.stream.Collectors;
 
-@ControllerAdvice
+@RestControllerAdvice(basePackages = "com.auctionflow.api.controllers")
 public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);

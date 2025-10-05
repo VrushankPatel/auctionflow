@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Component
-public class CreateAuctionHandler implements CommandHandler<CreateAuctionCommand> {
+public class CreateAuctionHandler {
 
     private final EventStore eventStore;
     private final KafkaTemplate<String, DomainEvent> kafkaTemplate;
@@ -31,7 +31,6 @@ public class CreateAuctionHandler implements CommandHandler<CreateAuctionCommand
         this.redissonClient = redissonClient;
     }
 
-    @Override
     @Async
     @EventListener
     public void handle(CreateAuctionCommand command) {

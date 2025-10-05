@@ -71,7 +71,7 @@ public class ReplayServiceIntegrationTest extends AbstractIntegrationTest {
         );
 
         BidPlacedEvent bidEvent = new BidPlacedEvent(
-                auctionId, UUID.randomUUID(), Money.usd(BigDecimal.valueOf(150)), baseTime.plusSeconds(5), UUID.randomUUID(), 2L, 1L
+                auctionId, UUID.randomUUID().toString(), Money.usd(BigDecimal.valueOf(150)), baseTime.plusSeconds(5), UUID.randomUUID(), 2L, 1L
         );
 
         eventStore.save(List.of(createdEvent, bidEvent), 0);
