@@ -91,6 +91,36 @@ Auction Flow implements a CQRS/Event Sourcing architecture to ensure correctness
 - **auction-common**: Shared utilities, configurations, and common code.
 - **auction-tests**: Testing utilities, fixtures, and integration test suites.
 
+## Repository Structure
+
+Top-level layout after reorganization:
+
+```
+AuctionFlow/
+├── auction-*/                      # Backend modules
+├── auctionflow-ui/                 # Frontend (client + server)
+├── config/                         # Shared configuration (non-secret)
+├── docs/
+│   ├── api/                        # API specifications (v1, comprehensive, versioning)
+│   ├── operations/                 # Deployment, SRE runbooks, dashboards, performance
+│   └── specifications/             # Product and frontend specifications
+├── infrastructure/
+│   ├── docker/                     # Dockerfiles and docker-compose*
+│   ├── database/postgres/          # Postgres init and configs
+│   ├── helm/                       # Helm charts
+│   ├── k8s/                        # Kubernetes manifests
+│   ├── monitoring/                 # Prometheus, Filebeat, Grafana
+│   └── storage/uploads/            # Shared uploads volume (gitignored)
+├── scripts/
+│   ├── deployment/                 # deploy.sh, canary, blue/green, rollback
+│   ├── backup/                     # backup/restore and cron setup
+│   ├── setup/                      # multi-region and environment setup
+│   └── testing/                    # integration/system test helpers
+└── sdks/                           # Language SDKs (go, java, js, python)
+```
+
+Note: Use `./scripts/deployment/deploy.sh` for all deployment flows. See `docs/operations/DEPLOYMENT_GUIDE.md`.
+
 ## Getting Started
 
 ### Prerequisites

@@ -47,6 +47,11 @@ Thumbs.db
 /redis-data
 /kafka-data
 /uploads
+/auction-api/uploads/
+/auction-tests/uploads/
+infrastructure/storage/uploads/
+infrastructure/database/**/data/
+infrastructure/database/**/archive/
 /backup
 
 # Memory dumps

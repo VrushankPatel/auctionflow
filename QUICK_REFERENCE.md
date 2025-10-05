@@ -4,30 +4,30 @@
 
 ```bash
 # Fast backend update (USE THIS MOST)
-./deploy.sh quick
+./scripts/deployment/deploy.sh quick
 
 # View logs
-./deploy.sh logs
+./scripts/deployment/deploy.sh logs
 
 # Check if everything is running
-./deploy.sh status
+./scripts/deployment/deploy.sh status
 
 # Complete rebuild (use sparingly)
-./deploy.sh full
+./scripts/deployment/deploy.sh full
 ```
 
 ## 📋 All Deploy Commands
 
 | Command | Time | Use When |
 |---------|------|----------|
-| `./deploy.sh quick` | 30s | Changed Java code ⭐ |
-| `./deploy.sh frontend` | 1-2m | Changed UI code |
-| `./deploy.sh backend` | 1m | Java + cache clear |
-| `./deploy.sh full` | 2-3m | First time / major changes |
-| `./deploy.sh restart` | 20s | Config changes only |
-| `./deploy.sh logs` | - | View real-time logs |
-| `./deploy.sh status` | - | Check health |
-| `./deploy.sh clean` | - | Nuclear option 💣 |
+| `./scripts/deployment/deploy.sh quick` | 30s | Changed Java code ⭐ |
+| `./scripts/deployment/deploy.sh frontend` | 1-2m | Changed UI code |
+| `./scripts/deployment/deploy.sh backend` | 1m | Java + cache clear |
+| `./scripts/deployment/deploy.sh full` | 2-3m | First time / major changes |
+| `./scripts/deployment/deploy.sh restart` | 20s | Config changes only |
+| `./scripts/deployment/deploy.sh logs` | - | View real-time logs |
+| `./scripts/deployment/deploy.sh status` | - | Check health |
+| `./scripts/deployment/deploy.sh clean` | - | Nuclear option 💣 |
 
 ## 🌐 Access URLs
 
@@ -111,13 +111,13 @@ git pull
 ### During Development
 ```bash
 # Make changes to Java code
-./deploy.sh quick
+./scripts/deployment/deploy.sh quick
 # Test at http://localhost:8080/ui/
 ```
 
 ### Before Commit
 ```bash
-./deploy.sh test
+./scripts/deployment/deploy.sh test
 git add .
 git commit -m "your changes"
 ```
@@ -127,12 +127,12 @@ git commit -m "your changes"
 ```bash
 # Everything is broken
 docker compose down -v
-./deploy.sh clean
-./deploy.sh full
+./scripts/deployment/deploy.sh clean
+./scripts/deployment/deploy.sh full
 
 # Just restart everything
 docker compose restart
-./deploy.sh status
+./scripts/deployment/deploy.sh status
 
 # View all container logs
 docker compose logs -f

@@ -17,6 +17,17 @@ print_info() {
     echo -e "${BLUE}ℹ ${NC}$1"
 }
 
+# Resolve compose file (support new repo structure)
+COMPOSE_FILE="docker-compose.yml"
+if [ -f "infrastructure/docker/docker-compose.yml" ]; then
+    COMPOSE_FILE="infrastructure/docker/docker-compose.yml"
+fi
+
+# Wrapper to call docker compose with the correct file
+dc() {
+  docker compose -f "$COMPOSE_FILE" "$@"
+}
+
 print_success() {
     echo -e "${GREEN}✓${NC} $1"
 }
@@ -125,7 +136,7 @@ rebuild_docker() {
     print_header "Rebuilding Docker Images"
     
     print_info "Building auction-api image..."
-    docker compose build --no-cache auction-api
+    dc build --no-cache auction-api
     
     print_success "Docker images rebuilt"
 }
@@ -135,7 +146,7 @@ start_containers() {
     print_header "Starting Docker Containers"
     
     print_info "Starting all services..."
-    docker compose up -d
+    dc up -d
     
     print_info "Waiting for services to initialize (30 seconds)..."
     for i in {1..30}; do
@@ -152,7 +163,7 @@ stop_containers() {
     print_header "Stopping Docker Containers"
     
     print_info "Stopping all services..."
-    docker compose down
+    dc down
     
     print_success "Containers stopped"
 }
@@ -161,7 +172,7 @@ stop_containers() {
 restart_service() {
     local service=$1
     print_info "Restarting $service..."
-    docker compose restart $service
+    dc restart $service
     print_success "$service restarted"
 }
 
@@ -171,13 +182,13 @@ show_logs() {
     local lines=${2:-50}
     
     print_header "Application Logs - $service"
-    docker compose logs $service --tail=$lines -f
+    dc logs $service --tail=$lines -f
 }
 
 # Function to show status
 show_status() {
     print_header "Container Status"
-    docker compose ps
+    dc ps
     
     echo ""
     print_header "Service Health"
@@ -214,7 +225,7 @@ clean_all() {
     print_header "Cleaning Build Artifacts"
     
     print_info "Stopping containers..."
-    docker compose down -v
+    dc down -v
     
     print_info "Cleaning Gradle build..."
     ./gradlew clean
@@ -257,13 +268,13 @@ deploy_backend() {
     check_prerequisites
     
     print_info "Stopping auction-api..."
-    docker compose stop auction-api
+    dc stop auction-api
     
     build_backend
     rebuild_docker
     
     print_info "Starting auction-api..."
-    docker compose up -d auction-api
+    dc up -d auction-api
     
     print_info "Waiting for service to start (20 seconds)..."
     for i in {1..20}; do
@@ -284,13 +295,13 @@ deploy_frontend() {
     build_frontend
     
     print_info "Stopping auction-api..."
-    docker compose stop auction-api
+    dc stop auction-api
     
     build_backend
     rebuild_docker
     
     print_info "Starting auction-api..."
-    docker compose up -d auction-api
+    dc up -d auction-api
     
     print_info "Waiting for service to start (20 seconds)..."
     for i in {1..20}; do
@@ -314,7 +325,7 @@ deploy_quick() {
     ./gradlew :auction-api:build -x test
     
     print_info "Rebuilding Docker image..."
-    docker compose build auction-api
+    dc build auction-api
     
     print_info "Starting auction-api..."
     docker compose up -d auction-api
@@ -349,7 +360,7 @@ deploy_restart() {
     print_header "Restarting Containers"
     
     print_info "Restarting all services..."
-    docker compose restart
+    dc restart
     
     print_info "Waiting for services to start (20 seconds)..."
     for i in {1..20}; do

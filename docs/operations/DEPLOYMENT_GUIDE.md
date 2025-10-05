@@ -6,33 +6,32 @@ The `deploy.sh` script is your one-stop solution for all deployment needs.
 
 ### Make it executable (first time only)
 ```bash
-chmod +x deploy.sh
+chmod +x scripts/deployment/deploy.sh
 ```
 
 ## Common Commands
 
 ### 🚀 Full Deployment (First Time / Major Changes)
 ```bash
-./deploy.sh full
+./scripts/deployment/deploy.sh full
 ```
 Use when:
-- First time setup
 - Major changes to both frontend and backend
 - After pulling major updates from git
 
 ### ⚡ Quick Backend Update (Most Common)
 ```bash
-./deploy.sh quick
+./scripts/deployment/deploy.sh quick
 ```
 Use when:
 - You changed Java code
 - You fixed a bug
-- You added a new API endpoint
+{{ ... }}
 - **This is the fastest option for backend changes**
 
 ### 🎨 Frontend Only Update
 ```bash
-./deploy.sh frontend
+./scripts/deployment/deploy.sh frontend
 ```
 Use when:
 - You only changed UI code (React/TypeScript)
@@ -40,7 +39,7 @@ Use when:
 
 ### 🔧 Backend Only Update
 ```bash
-./deploy.sh backend
+./scripts/deployment/deploy.sh backend
 ```
 Use when:
 - You changed Java code and want a full rebuild
@@ -48,7 +47,7 @@ Use when:
 
 ### 🔄 Restart Containers
 ```bash
-./deploy.sh restart
+./scripts/deployment/deploy.sh restart
 ```
 Use when:
 - You changed configuration files
@@ -56,25 +55,25 @@ Use when:
 
 ### 📊 View Logs
 ```bash
-./deploy.sh logs
+./scripts/deployment/deploy.sh logs
 ```
 View real-time logs from the application
 
 ### 📈 Check Status
 ```bash
-./deploy.sh status
+./scripts/deployment/deploy.sh status
 ```
 Check if all services are running and healthy
 
 ### 🧪 Run Tests
 ```bash
-./deploy.sh test
+./scripts/deployment/deploy.sh test
 ```
 Run integration tests
 
 ### 🧹 Clean Everything
 ```bash
-./deploy.sh clean
+./scripts/deployment/deploy.sh clean
 ```
 Stop containers and clean all build artifacts
 
